@@ -477,7 +477,10 @@ const App = (() => {
   function renderCurrentTab() {
     switch (state.currentTab) {
       case 'dashboard': renderDashboard(); break;
-      case 'movements': renderMovements(); break;
+      case 'movements': 
+        renderFilterChips(); 
+        renderMovements(); 
+        break;
       case 'accounts': renderAccounts(); break;
       case 'agenda': renderAgenda(); break;
       case 'analytics': renderAnalytics(); break;
@@ -645,8 +648,6 @@ const App = (() => {
      RENDER: MOVEMENTS (was EXPENSES)
      ════════════════════════════════════════ */
   function renderMovements() {
-    renderFilterChips();
-
     const container = document.getElementById('expenses-list');
     if (!container) return;
 
@@ -871,6 +872,29 @@ const App = (() => {
     if (realBalanceEl) realBalanceEl.textContent = `${formatAmount(totalReal)} Bs`;
     if (projectedBalanceEl) projectedBalanceEl.textContent = `${formatAmount(projected)} Bs`;
 
+    const savingsGoalEl = document.getElementById('agenda-savings-goal');
+    if (savingsGoalEl) {
+      let savingsGoal = 0;
+      if (state.profile?.savingsType === 'percentage') {
+        const incomeTotal = state.expenses.filter(e => (e.type || 'expense') === 'income').reduce((s, e) => s + e.amount, 0);
+        savingsGoal = incomeTotal * ((state.profile.savingsValue || 0) / 100);
+      } else {
+        savingsGoal = state.profile?.savingsValue || 0;
+      }
+
+      if (savingsGoal > 0) {
+        if (projected >= savingsGoal) {
+          savingsGoalEl.style.color = 'var(--text-primary)';
+          savingsGoalEl.innerHTML = `🎯 Meta de ahorro mensual: <strong>${formatAmount(savingsGoal)} Bs</strong><br><span style="color:var(--accent-primary);">¡Tu balance proyectado cubre la meta! ✅</span>`;
+        } else {
+          savingsGoalEl.style.color = 'var(--text-primary)';
+          savingsGoalEl.innerHTML = `🎯 Meta de ahorro mensual: <strong>${formatAmount(savingsGoal)} Bs</strong><br><span style="color:var(--expense-red);">Tu balance proyectado no alcanza la meta ⚠️</span>`;
+        }
+      } else {
+        savingsGoalEl.innerHTML = '';
+      }
+    }
+
     if (state.plannedExpenses.length === 0) {
       listContainer.innerHTML = `
         <div class="expense-empty">
@@ -1014,7 +1038,8 @@ const App = (() => {
   }
 
   function selectCategory(el) {
-    document.querySelectorAll('#category-selector .category-option').forEach(opt => opt.classList.remove('selected'));
+    const container = el.closest('.category-selector') || document.querySelector('#category-selector');
+    container.querySelectorAll('.category-option').forEach(opt => opt.classList.remove('selected'));
     el.classList.add('selected');
   }
 
@@ -2089,6 +2114,7 @@ const App = (() => {
         document.querySelectorAll('.type-filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         state.movementFilter = btn.dataset.filter;
+        renderFilterChips();
         renderMovements();
       });
     });

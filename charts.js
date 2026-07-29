@@ -140,7 +140,7 @@ const MiPlataCharts = (() => {
       </div>
       <div style="text-align: right; margin-top: 4px;">
         <span style="font-size: 12px; font-weight: 600; color: ${isComplete ? 'var(--accent-primary)' : 'var(--text-muted)'};">
-          ${pct.toFixed(0)}%${isComplete ? ' ✅ ¡Meta alcanzada!' : ''}
+          ${pct.toFixed(0)}% disponible
         </span>
       </div>
     `;
