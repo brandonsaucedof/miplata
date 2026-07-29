@@ -7,36 +7,36 @@
 
 /* ── Design Tokens ── */
 :root {
-  /* Background layers — neutral graphite, not purple-tinted */
-  --bg-base: #0a0c10;
-  --bg-base-rgb: 10, 12, 16;
-  --bg-surface: #10131a;
-  --bg-elevated: #171b24;
-  --bg-card: rgba(255, 255, 255, 0.035);
-  --bg-card-hover: rgba(255, 255, 255, 0.06);
+  /* Background layers — deep violet/blue */
+  --bg-base: #10111e;
+  --bg-base-rgb: 16, 17, 30;
+  --bg-surface: #1d1e34;
+  --bg-elevated: #282a47;
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-card-hover: rgba(255, 255, 255, 0.07);
 
-  /* Glassmorphism — softer, less "gamer glass" */
-  --glass-bg: rgba(255, 255, 255, 0.045);
-  --glass-border: rgba(255, 255, 255, 0.085);
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
   --glass-blur: 24px;
 
-  /* Brand gradient: deep emerald → teal (refined, less neon) */
-  --gradient-primary: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-  --gradient-primary-soft: linear-gradient(135deg, rgba(var(--accent-primary-rgb), 0.14) 0%, rgba(var(--accent-secondary-rgb), 0.14) 100%);
+  /* Brand gradient: Purple -> Blue */
+  --gradient-primary: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);
+  --gradient-primary-soft: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
   --gradient-danger: linear-gradient(135deg, var(--accent-danger) 0%, #c2410c 100%);
 
-  /* Accent colors — deeper, richer, corporate-fintech tones */
-  --accent-primary: #059669;
-  --accent-primary-rgb: 5, 150, 105;
-  --accent-secondary: #0891b2;
-  --accent-secondary-rgb: 8, 145, 178;
-  --accent-warning: #d97706;
-  --accent-warning-rgb: 217, 119, 6;
-  --accent-danger: #dc2626;
-  --accent-danger-rgb: 220, 38, 38;
-  --accent-info: #2563eb;
-  --accent-info-rgb: 37, 99, 235;
-  --expense-red: var(--accent-danger);
+  /* Accent colors */
+  --accent-primary: #a855f7;
+  --accent-primary-rgb: 168, 85, 247;
+  --accent-secondary: #3b82f6;
+  --accent-secondary-rgb: 59, 130, 246;
+  --accent-warning: #f59e0b;
+  --accent-warning-rgb: 245, 158, 11;
+  --accent-danger: #ef4444;
+  --accent-danger-rgb: 239, 68, 68;
+  --accent-info: #3b82f6;
+  --accent-info-rgb: 59, 130, 246;
+  --expense-red: #f43f5e;
 
   /* Text */
   --text-primary: #f4f6f8;
@@ -62,12 +62,12 @@
   --space-xl: 32px;
   --space-2xl: 48px;
 
-  /* Radius — slightly tighter, more precise/corporate */
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-  --radius-full: 50%;
+  /* Radius — much softer and larger */
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-full: 50px;
 
   /* Layout */
   --bottom-nav-height: 72px;
@@ -116,8 +116,8 @@ body::before {
   right: 0;
   bottom: 0;
   background:
-    radial-gradient(ellipse 90% 40% at 50% -5%, rgba(var(--accent-primary-rgb), 0.05) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 30% at 100% 100%, rgba(var(--accent-secondary-rgb), 0.035) 0%, transparent 60%);
+    radial-gradient(circle at 50% -10%, rgba(168, 85, 247, 0.18) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
@@ -297,20 +297,19 @@ img {
 .savings-type-btn {
   flex: 1;
   padding: 12px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   font-size: 14px;
   font-weight: 600;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  border: none;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
 }
 
 .savings-type-btn.active {
-  background: var(--gradient-primary);
-  color: var(--text-inverse);
-  border-color: transparent;
-  box-shadow: var(--shadow-glow);
+  background: white;
+  color: #121323;
+  box-shadow: 0 4px 12px rgba(255,255,255,0.1);
 }
 
 /* ── Buttons ── */
@@ -1660,8 +1659,8 @@ textarea.form-input {
 /* ── Transaction Type Selector ── */
 .transaction-type-selector {
   display: flex;
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-full);
   padding: 4px;
   margin-bottom: var(--space-md);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -1674,20 +1673,15 @@ textarea.form-input {
   background: transparent;
   color: var(--text-secondary);
   font-weight: 600;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   transition: all 0.2s ease;
 }
 
-.transaction-type-selector .type-btn.active[data-type="expense"] {
-  background: var(--bg-primary);
-  color: var(--expense-red);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
+.transaction-type-selector .type-btn.active[data-type="expense"],
 .transaction-type-selector .type-btn.active[data-type="income"] {
-  background: var(--bg-primary);
-  color: var(--accent-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: white;
+  color: #121323;
+  box-shadow: 0 4px 12px rgba(255,255,255,0.1);
 }
 
 /* ================================================
@@ -2099,23 +2093,21 @@ textarea.form-input {
 }
 
 .type-filter-btn {
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
   font-size: 13px;
   font-weight: 600;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: var(--bg-elevated);
+  border: none;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
-  text-align: center;
+  white-space: nowrap;
 }
 
 .type-filter-btn.active {
-  background: var(--gradient-primary);
-  color: var(--text-inverse);
-  border-color: transparent;
-  box-shadow: var(--shadow-glow);
+  background: white;
+  color: #121323;
+  box-shadow: 0 4px 12px rgba(255,255,255,0.1);
 }
 
 .type-filter-btn:active {

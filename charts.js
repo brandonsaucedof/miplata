@@ -26,7 +26,16 @@ const MiPlataCharts = (() => {
     const ctx = canvas.getContext('2d');
     const labels = categoryData.map(c => c.name);
     const data = categoryData.map(c => c.amount);
-    const colors = categoryData.map(c => c.color);
+    
+    // Instead of category colors, create a purple-to-blue gradient
+    // Chart.js can't easily do a sweeping conic gradient without plugins,
+    // so we'll just use the category colors but maybe override them in app.js.
+    // The user's screenshot has one big stroke, but we are grouping by category.
+    const colors = categoryData.map(c => {
+      // Return their default color, or maybe force a gradient palette
+      // For now, keep the category colors but make the donut thicker
+      return c.color;
+    });
 
     donutChart = new Chart(ctx, {
       type: 'doughnut',
@@ -35,22 +44,22 @@ const MiPlataCharts = (() => {
         datasets: [{
           data,
           backgroundColor: colors,
-          borderColor: 'rgba(10, 10, 15, 0.8)',
-          borderWidth: 3,
-          borderRadius: 4,
+          borderColor: 'rgba(16, 17, 30, 0.8)', // Match new background
+          borderWidth: 4,
+          borderRadius: 24, // Rounded caps
           hoverBorderColor: 'rgba(255, 255, 255, 0.2)',
           hoverBorderWidth: 2,
-          spacing: 2
+          spacing: -5 // Negative spacing for overlap effect
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        cutout: '72%',
+        cutout: '65%', // Thicker donut
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: 'rgba(23, 27, 36, 0.97)',
+            backgroundColor: 'rgba(29, 30, 52, 0.97)',
             titleColor: '#f4f6f8',
             bodyColor: '#99a3b0',
             borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -133,13 +142,13 @@ const MiPlataCharts = (() => {
     container.innerHTML = `
       <div class="savings-header">
         <span class="savings-title">🎯 Meta de Ahorro</span>
-        <span class="savings-value">${formatAmount(current)} / ${formatAmount(goal)} Bs</span>
+        <span class="savings-value" style="color:var(--text-primary); font-weight:700;">${formatAmount(current)} / ${formatAmount(goal)} Bs</span>
       </div>
-      <div class="progress-bar">
-        <div class="progress-fill" style="width: ${pct}%;${isComplete ? ' background: var(--gradient-primary);' : ''}"></div>
+      <div class="progress-bar" style="height: 12px; border-radius: 12px; background: rgba(255,255,255,0.05); margin-top: 8px;">
+        <div class="progress-fill" style="height: 100%; border-radius: 12px; width: ${pct}%; background: var(--gradient-primary); box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);"></div>
       </div>
-      <div style="text-align: right; margin-top: 4px;">
-        <span style="font-size: 12px; font-weight: 600; color: ${isComplete ? 'var(--accent-primary)' : 'var(--text-muted)'};">
+      <div style="text-align: right; margin-top: 6px;">
+        <span style="font-size: 13px; font-weight: 700; color: var(--text-secondary);">
           ${pct.toFixed(0)}% disponible
         </span>
       </div>
