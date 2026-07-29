@@ -1098,7 +1098,36 @@ const App = (() => {
 
 /* ── Bootstrap ── */
 document.addEventListener('DOMContentLoaded', () => {
-  App.init().catch(err => {
+  App.init().then(async () => {
+    // Check for shared image from Web Share Target API
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('shared') === '1') {
+      try {
+        if ('caches' in window) {
+          const cache = await caches.open('shared-data');
+          const keys = await cache.keys();
+          if (keys.length > 0) {
+            const res = await cache.match(keys[0]);
+            if (res) {
+              const blob = await res.blob();
+              const file = new File([blob], 'comprobante_compartido.jpg', { type: blob.type || 'image/jpeg' });
+              
+              // Open OCR Modal with the file
+              if (typeof OcrModule !== 'undefined' && OcrModule.openModal) {
+                OcrModule.openModal(file);
+              }
+              
+              // Clean up the cache and URL
+              await cache.delete(keys[0]);
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error procesando imagen compartida:', err);
+      }
+    }
+  }).catch(err => {
     console.error('App init failed:', err);
   });
 });

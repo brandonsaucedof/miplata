@@ -2,7 +2,7 @@
    MiPlata — Service Worker (Cache-First)
    ============================================ */
 
-const CACHE_VERSION = 'miplata-v2';
+const CACHE_VERSION = 'miplata-v4';
 
 // Detect base path dynamically (works on GitHub Pages, Vercel, Netlify, etc.)
 const BASE = self.registration.scope;
@@ -58,7 +58,26 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Skip non-GET requests
+  // Handle Web Share Target POST request
+  if (request.method === 'POST' && request.url.includes('?shared=true')) {
+    event.respondWith((async () => {
+      try {
+        const formData = await request.formData();
+        const file = formData.get('receipt');
+        if (file) {
+          const cache = await caches.open('shared-data');
+          await cache.put(new URL('shared-image', BASE).href, new Response(file));
+        }
+      } catch (err) {
+        console.error('[SW] Share target error:', err);
+      }
+      // Redirect to the main app with the shared parameter
+      return Response.redirect(new URL('?shared=1', BASE).href, 303);
+    })());
+    return;
+  }
+
+  // Skip other non-GET requests
   if (request.method !== 'GET') return;
 
   // Skip chrome-extension and other non-http(s) requests
