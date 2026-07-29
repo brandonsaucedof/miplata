@@ -147,9 +147,37 @@
         </div>
       </div>
 
-      <button id="btn-onboarding-done" class="btn-primary" style="margin-bottom: 12px;">¡Finalizar y empezar!</button>
+      <button id="btn-onboarding-step5-next" class="btn-primary" style="margin-bottom: 12px;">Siguiente</button>
       <button class="btn-text"
         onclick="document.getElementById('onboarding-step-5').classList.remove('active'); document.getElementById('onboarding-step-4').classList.add('active');">←
+        Atrás</button>
+    </div>
+
+    <!-- Step 6: Meta de Ahorro -->
+    <div id="onboarding-step-6" class="onboarding-step">
+      <div class="onboarding-logo">🎯</div>
+      <h2 class="onboarding-title">¿Quieres ahorrar?</h2>
+      <p class="onboarding-subtitle">Define una meta de ahorro mensual. Te ayudaremos a llevar un seguimiento de tu progreso.</p>
+
+      <div style="display: flex; gap: 12px; margin-bottom: 24px; width: 100%;">
+        <button id="btn-ob-save-no" class="btn-secondary" style="flex:1;">No por ahora</button>
+        <button id="btn-ob-save-yes" class="btn-secondary active" style="flex:1;">Sí, quiero ahorrar</button>
+      </div>
+
+      <div id="ob-savings-container" style="width: 100%;">
+        <div class="savings-type-toggle">
+          <button class="savings-type-btn active" data-type="percentage" onclick="App.toggleObSavingsType(this)">% Porcentaje</button>
+          <button class="savings-type-btn" data-type="fixed" onclick="App.toggleObSavingsType(this)">Bs Fijo</button>
+        </div>
+        <div class="form-group" style="text-align: left; margin-top: 16px;">
+          <label class="form-label" id="ob-savings-label">Porcentaje (%)</label>
+          <input type="number" class="form-input" id="ob-savings-input" placeholder="Ej: 20" inputmode="decimal">
+        </div>
+      </div>
+
+      <button id="btn-onboarding-done" class="btn-primary" style="margin-bottom: 12px; margin-top: 12px;">¡Finalizar y empezar!</button>
+      <button class="btn-text"
+        onclick="document.getElementById('onboarding-step-6').classList.remove('active'); document.getElementById('onboarding-step-5').classList.add('active');">←
         Atrás</button>
     </div>
   </div>
@@ -271,6 +299,31 @@
         </div>
       </section>
 
+      <!-- ─── AGENDA (Gastos Programados) ─── -->
+      <section id="tab-agenda" class="tab-panel">
+        <h3 class="section-title">Mi Planificador</h3>
+        
+        <div class="balance-card" style="background: linear-gradient(135deg, var(--bg-secondary) 0%, #1e293b 100%);">
+          <div class="balance-label">Balance Actual (Real)</div>
+          <div id="agenda-real-balance" class="balance-amount" style="font-size: 24px;">0,00 Bs</div>
+          
+          <div style="margin: 16px 0; border-top: 1px dashed var(--border-color);"></div>
+          
+          <div class="balance-label" style="color: var(--text-secondary);">Balance Proyectado</div>
+          <div id="agenda-projected-balance" class="balance-amount" style="font-size: 32px; color: var(--accent-primary);">0,00 Bs</div>
+          <div style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 4px;">Después de pagar los gastos programados</div>
+        </div>
+
+        <h3 class="section-title">Gastos Programados</h3>
+        <div id="planned-expenses-list" class="expense-list">
+          <!-- Rendered by app.js -->
+        </div>
+        
+        <button class="add-category-btn" onclick="App.showPlannedModal()">
+          <span>＋</span> Nuevo Gasto Programado
+        </button>
+      </section>
+
       <!-- ─── SETTINGS ─── -->
       <section id="tab-settings" class="tab-panel">
 
@@ -370,6 +423,10 @@
         <span class="nav-icon">💳</span>
         <span class="nav-label">Cuentas</span>
       </button>
+      <button class="nav-item" data-tab="agenda">
+        <span class="nav-icon">🗓️</span>
+        <span class="nav-label">Agenda</span>
+      </button>
       <button class="nav-item" data-tab="analytics">
         <span class="nav-icon">📈</span>
         <span class="nav-label">Análisis</span>
@@ -384,6 +441,48 @@
   <!-- ═══════════════════════════════════════
        MODALS
        ═══════════════════════════════════════ -->
+
+  <!-- Modal: Add/Edit Planned Expense -->
+  <div id="modal-planned" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <h2 id="modal-planned-title" class="modal-title">Gasto Programado</h2>
+
+      <div class="form-group">
+        <label class="form-label" for="input-planned-amount">Monto Previsto (Bs)</label>
+        <input type="number" class="form-input" id="input-planned-amount" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Cuenta a usar</label>
+        <div id="planned-account-selector" class="account-selector">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Categoría</label>
+        <div id="planned-category-selector" class="category-selector">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-planned-note">Nota / Descripción</label>
+        <input type="text" class="form-input" id="input-planned-note" placeholder="Ej: Luz, Agua, Alquiler..." maxlength="100">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-planned-date">Fecha Prevista de Pago</label>
+        <input type="date" class="form-input" id="input-planned-date">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" data-close-modal="modal-planned">Cancelar</button>
+        <button id="btn-save-planned" class="btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: Add/Edit Expense -->
   <div id="modal-expense" class="modal-overlay">

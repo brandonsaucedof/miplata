@@ -4,7 +4,7 @@
 
 const MiPlataDB = (() => {
   const DB_NAME = 'miplata';
-  const DB_VERSION = 2;
+  const DB_VERSION = 3;
   let db = null;
 
   /* ── Default categories ── */
@@ -73,6 +73,12 @@ const MiPlataDB = (() => {
           if (!expStore.indexNames.contains('accountId')) {
             expStore.createIndex('accountId', 'accountId', { unique: false });
           }
+        }
+
+        // --- v3: Add planned expenses store ---
+        if (!database.objectStoreNames.contains('planned_expenses')) {
+          const store = database.createObjectStore('planned_expenses', { keyPath: 'id' });
+          store.createIndex('date', 'date', { unique: false });
         }
       };
 
@@ -233,11 +239,12 @@ const MiPlataDB = (() => {
 
   /* ── Export entire database as JSON ── */
   async function exportAll() {
-    const [profile, expenses, categories, accounts] = await Promise.all([
+    const [profile, expenses, categories, accounts, planned] = await Promise.all([
       getAll('profile'),
       getAll('expenses'),
       getAll('categories'),
-      getAll('accounts')
+      getAll('accounts'),
+      getAll('planned_expenses')
     ]);
     return {
       appName: 'MiPlata',
@@ -246,7 +253,8 @@ const MiPlataDB = (() => {
       profile,
       expenses,
       categories,
-      accounts
+      accounts,
+      planned_expenses: planned
     };
   }
 
@@ -257,11 +265,12 @@ const MiPlataDB = (() => {
         clear('profile'),
         clear('expenses'),
         clear('categories'),
-        clear('accounts')
+        clear('accounts'),
+        clear('planned_expenses')
       ]);
     }
 
-    const stores = ['profile', 'expenses', 'categories', 'accounts'];
+    const stores = ['profile', 'expenses', 'categories', 'accounts', 'planned_expenses'];
     for (const storeName of stores) {
       const items = data[storeName] || [];
       for (const item of items) {

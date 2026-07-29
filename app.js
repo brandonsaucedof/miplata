@@ -11,6 +11,7 @@ const App = (() => {
     profile: null,        // { id, currency, savingsType, savingsValue }
     accounts: [],         // All accounts
     expenses: [],         // Current month transactions
+    plannedExpenses: [],  // All planned expenses
     categories: [],       // All categories
     currentMonth: '',     // 'YYYY-MM'
     currentTab: 'dashboard',
@@ -68,7 +69,8 @@ const App = (() => {
     categories: [],
     salary: { amount: 0, date: '', accountId: '' },
     pastExpenses: [],
-    hasSpent: false
+    hasSpent: false,
+    savings: { enabled: true, type: 'percentage', value: 0 }
   };
 
   const OB_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#f97316'];
@@ -151,6 +153,25 @@ const App = (() => {
       obState.hasSpent = true;
       if (obState.pastExpenses.length === 0) addObExpense();
       renderObExpenses();
+    });
+
+    document.getElementById('btn-onboarding-step5-next')?.addEventListener('click', () => {
+      showOnboardingStep(6);
+    });
+
+    // Step 6 Logic
+    document.getElementById('btn-ob-save-no')?.addEventListener('click', () => {
+      document.getElementById('btn-ob-save-no').classList.add('active');
+      document.getElementById('btn-ob-save-yes').classList.remove('active');
+      document.getElementById('ob-savings-container').style.display = 'none';
+      obState.savings.enabled = false;
+    });
+
+    document.getElementById('btn-ob-save-yes')?.addEventListener('click', () => {
+      document.getElementById('btn-ob-save-yes').classList.add('active');
+      document.getElementById('btn-ob-save-no').classList.remove('active');
+      document.getElementById('ob-savings-container').style.display = 'block';
+      obState.savings.enabled = true;
     });
 
     document.getElementById('btn-onboarding-done')?.addEventListener('click', completeOnboarding);
@@ -311,13 +332,20 @@ const App = (() => {
 
   // --- FINISH ---
   async function completeOnboarding() {
+    // Read savings input if enabled
+    if (obState.savings.enabled) {
+      obState.savings.value = parseFloat(document.getElementById('ob-savings-input').value) || 0;
+    } else {
+      obState.savings.value = 0;
+    }
+
     // Save profile
     state.profile = {
       id: 'main',
       name: obState.userName || '',
       currency: 'Bs',
-      savingsType: 'percentage',
-      savingsValue: 0,
+      savingsType: obState.savings.type,
+      savingsValue: obState.savings.value,
       createdAt: new Date().toISOString()
     };
     await MiPlataDB.save('profile', state.profile);
@@ -451,6 +479,7 @@ const App = (() => {
       case 'dashboard': renderDashboard(); break;
       case 'movements': renderMovements(); break;
       case 'accounts': renderAccounts(); break;
+      case 'agenda': renderAgenda(); break;
       case 'analytics': renderAnalytics(); break;
       case 'settings': renderSettings(); break;
     }
@@ -471,8 +500,11 @@ const App = (() => {
     state.expenses = await MiPlataDB.getByMonth(state.currentMonth);
     state.categories = await MiPlataDB.getAll('categories');
     state.accounts = await MiPlataDB.getAll('accounts');
+    state.plannedExpenses = await MiPlataDB.getAll('planned_expenses');
     // Sort expenses by date descending
     state.expenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Sort planned ascending
+    state.plannedExpenses.sort((a, b) => new Date(a.date) - new Date(b.date));
   }
 
   /* ════════════════════════════════════════
@@ -824,6 +856,71 @@ const App = (() => {
   }
 
   /* ════════════════════════════════════════
+     RENDER: AGENDA (Planned Expenses)
+     ════════════════════════════════════════ */
+  function renderAgenda() {
+    const listContainer = document.getElementById('planned-expenses-list');
+    const realBalanceEl = document.getElementById('agenda-real-balance');
+    const projectedBalanceEl = document.getElementById('agenda-projected-balance');
+    if (!listContainer) return;
+
+    const totalReal = state.accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+    const totalPlanned = state.plannedExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const projected = totalReal - totalPlanned;
+
+    if (realBalanceEl) realBalanceEl.textContent = `${formatAmount(totalReal)} Bs`;
+    if (projectedBalanceEl) projectedBalanceEl.textContent = `${formatAmount(projected)} Bs`;
+
+    if (state.plannedExpenses.length === 0) {
+      listContainer.innerHTML = `
+        <div class="expense-empty">
+          <div class="expense-empty-icon">🗓️</div>
+          <div class="expense-empty-text">
+            No tienes gastos programados<br>
+            <span style="color: var(--accent-primary);">Programa pagos a futuro aquí</span>
+          </div>
+        </div>`;
+      return;
+    }
+
+    listContainer.innerHTML = state.plannedExpenses.map(exp => {
+      const cat = state.categories.find(c => c.id === exp.category);
+      const acc = state.accounts.find(a => a.id === exp.accountId);
+      const icon = cat?.icon || '💰';
+      const catName = cat?.name || 'Otros';
+      const color = cat?.color || '#6b7280';
+      const accIcon = acc?.icon || '💳';
+      const accName = acc?.name || 'Cuenta no asig.';
+      
+      const d = new Date(exp.date);
+      // Determine if overdue
+      const isOverdue = d < new Date(new Date().setHours(0,0,0,0));
+      const dateColor = isOverdue ? 'var(--expense-red)' : 'var(--text-muted)';
+      const dateStr = `${d.getDate()} de ${MONTHS_ES[d.getMonth()]}`;
+
+      return `
+        <div class="expense-item" style="border-left: 4px solid ${color}; padding-left: 12px; margin-bottom: 12px;">
+          <div class="expense-icon" style="background: ${MiPlataCharts.hexToRgba(color, 0.15)}; width: 44px; height: 44px; margin-right: 12px;">
+            ${icon}
+          </div>
+          <div class="expense-details">
+            <div class="expense-category">${catName}</div>
+            <div class="expense-note">${escapeHtml(exp.note || 'Sin nota')}</div>
+            <div class="expense-account" style="font-size: 11px;">${accIcon} Saldrá de: ${accName}</div>
+          </div>
+          <div class="expense-meta" style="text-align: right;">
+            <div class="expense-amount" style="color: var(--expense-red)">-${formatAmount(exp.amount)} Bs</div>
+            <div class="expense-date" style="color: ${dateColor}; font-weight: ${isOverdue ? 'bold' : 'normal'}">${dateStr}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-left: 12px;">
+            <button onclick="App.markPlannedAsDone('${exp.id}')" style="background: var(--accent-primary); color: white; border: none; border-radius: 8px; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px;" title="Marcar como pagado">✓</button>
+            <button onclick="App.deletePlannedExpense('${exp.id}')" style="background: var(--bg-secondary); color: var(--expense-red); border: 1px solid var(--expense-red); border-radius: 8px; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px;" title="Eliminar">🗑</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* ════════════════════════════════════════
      EXPENSE CRUD
      ════════════════════════════════════════ */
   function showExpenseModal(editId = null) {
@@ -1084,6 +1181,129 @@ const App = (() => {
     await loadMonthData();
     renderCurrentTab();
     showToast('Registro eliminado', 'info');
+  }
+
+  /* ════════════════════════════════════════
+     PLANNED EXPENSE CRUD
+     ════════════════════════════════════════ */
+  function showPlannedModal() {
+    const title = document.getElementById('modal-planned-title');
+    document.getElementById('input-planned-amount').value = '';
+    document.getElementById('input-planned-note').value = '';
+    document.getElementById('input-planned-date').value = new Date().toISOString().split('T')[0];
+    
+    // Render selectors for modal-planned
+    const accountContainer = document.getElementById('planned-account-selector');
+    if (accountContainer) {
+      accountContainer.innerHTML = state.accounts.map((acc, i) => `
+        <div class="account-option ${i === 0 ? 'selected' : ''}" data-id="${acc.id}" onclick="App.selectAccount(this)">
+          <span class="account-option-icon" style="background: ${MiPlataCharts.hexToRgba(acc.color, 0.15)}">${acc.icon}</span>
+          <span class="account-option-name">${acc.name}</span>
+          <span class="account-option-balance">${formatAmount(acc.balance)} Bs</span>
+        </div>
+      `).join('');
+    }
+
+    const catContainer = document.getElementById('planned-category-selector');
+    if (catContainer) {
+      const expCats = state.categories.filter(cat => (cat.type || 'expense') === 'expense');
+      catContainer.innerHTML = expCats.map((cat, i) => `
+        <div class="category-option ${i === 0 ? 'selected' : ''}" data-id="${cat.id}" onclick="App.selectCategory(this)">
+          <span class="category-option-icon">${cat.icon}</span>
+          <span class="category-option-name">${cat.name}</span>
+        </div>
+      `).join('');
+    }
+
+    openModal('modal-planned');
+  }
+
+  async function savePlannedExpense() {
+    const amount = parseFloat(document.getElementById('input-planned-amount').value);
+    const note = document.getElementById('input-planned-note').value.trim();
+    const date = document.getElementById('input-planned-date').value;
+    const selectedCat = document.querySelector('#planned-category-selector .category-option.selected');
+    const selectedAcc = document.querySelector('#planned-account-selector .account-option.selected');
+
+    if (!amount || amount <= 0) {
+      showToast('Ingresa un monto válido', 'error');
+      return;
+    }
+    if (!selectedAcc) {
+      showToast('Selecciona una cuenta', 'error');
+      return;
+    }
+    if (!selectedCat) {
+      showToast('Selecciona una categoría', 'error');
+      return;
+    }
+    if (!date) {
+      showToast('Selecciona una fecha prevista', 'error');
+      return;
+    }
+
+    const planned = {
+      id: MiPlataDB.generateId('pln-'),
+      type: 'expense',
+      amount,
+      category: selectedCat.dataset.id,
+      accountId: selectedAcc.dataset.id,
+      note,
+      date: `${date}T12:00:00`,
+      createdAt: new Date().toISOString()
+    };
+
+    await MiPlataDB.save('planned_expenses', planned);
+    closeModal('modal-planned');
+    await loadMonthData();
+    renderCurrentTab();
+    showToast('Gasto programado exitosamente 🗓️', 'success');
+  }
+
+  async function deletePlannedExpense(id) {
+    if (!confirm('¿Eliminar este gasto programado? No se afectará tu saldo.')) return;
+    await MiPlataDB.remove('planned_expenses', id);
+    await loadMonthData();
+    renderCurrentTab();
+    showToast('Gasto programado eliminado', 'info');
+  }
+
+  async function markPlannedAsDone(id) {
+    const exp = state.plannedExpenses.find(e => e.id === id);
+    if (!exp) return;
+
+    if (!confirm(`¿Confirmas que ya pagaste ${formatAmount(exp.amount)} Bs?\nSe restará de la cuenta asignada.`)) return;
+
+    const account = await MiPlataDB.get('accounts', exp.accountId);
+    if (account) {
+      account.balance -= exp.amount;
+      await MiPlataDB.save('accounts', account);
+    }
+
+    // Convert to real expense using current date
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const [y, m] = dateStr.split('-');
+    
+    const realExpense = {
+      id: MiPlataDB.generateId('exp-'),
+      type: 'expense',
+      amount: exp.amount,
+      category: exp.category,
+      accountId: exp.accountId,
+      note: exp.note ? `(Programado) ${exp.note}` : 'Gasto programado',
+      date: `${dateStr}T${now.toTimeString().slice(0, 8)}`,
+      month: `${y}-${m}`,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+
+    await MiPlataDB.save('expenses', realExpense);
+    await MiPlataDB.remove('planned_expenses', id);
+    
+    await loadMonthData();
+    renderCurrentTab();
+    showToast('Gasto registrado y restado de tu cuenta ✅', 'success');
   }
 
   /* ════════════════════════════════════════
@@ -1804,6 +2024,16 @@ const App = (() => {
     }
   }
 
+  function toggleObSavingsType(btn) {
+    document.querySelectorAll('#ob-savings-container .savings-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const label = document.getElementById('ob-savings-label');
+    if (label) {
+      label.textContent = btn.dataset.type === 'percentage' ? 'Porcentaje (%)' : 'Monto (Bs)';
+    }
+    obState.savings.type = btn.dataset.type;
+  }
+
   /* ════════════════════════════════════════
      EVENT BINDINGS
      ════════════════════════════════════════ */
@@ -1886,6 +2116,9 @@ const App = (() => {
     document.getElementById('btn-save-account')?.addEventListener('click', () => saveAccount());
     document.getElementById('btn-delete-account')?.addEventListener('click', () => deleteAccount());
 
+    // Planned modal
+    document.getElementById('btn-save-planned')?.addEventListener('click', () => savePlannedExpense());
+
     // Transfer modal
     document.getElementById('btn-save-transfer')?.addEventListener('click', () => saveTransfer());
 
@@ -1952,6 +2185,10 @@ const App = (() => {
     showAccountEdit,
     saveAccount,
     deleteAccount,
+    showPlannedModal,
+    savePlannedExpense,
+    deletePlannedExpense,
+    markPlannedAsDone,
     showTransferModal,
     saveTransfer,
     showOCRModal,
@@ -1959,6 +2196,7 @@ const App = (() => {
     showEditSavings,
     updateSavings,
     toggleSavingsType,
+    toggleObSavingsType,
     showEditName,
     updateName,
     exportData,
