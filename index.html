@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MiPlata">
+  <meta name="description" content="Gestiona tus finanzas personales de forma simple y 100% offline. Registra gastos, define metas de ahorro y visualiza tu dinero.">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <title>MiPlata — Finanzas Personales</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-512.png">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════
+       TOAST CONTAINER
+       ═══════════════════════════════════════ -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ═══════════════════════════════════════
+       ONBOARDING
+       ═══════════════════════════════════════ -->
+  <div id="onboarding" class="screen">
+    <!-- Step 1: Welcome -->
+    <div id="onboarding-step-1" class="onboarding-step active">
+      <div class="onboarding-logo">💲</div>
+      <h1 class="onboarding-title">MiPlata</h1>
+      <p class="onboarding-subtitle">
+        Tu app de finanzas personales.<br>
+        100% offline, privada y sin límites.
+      </p>
+      <button id="btn-onboarding-start" class="btn-primary">Comenzar</button>
+    </div>
+
+    <!-- Step 2: Salary -->
+    <div id="onboarding-step-2" class="onboarding-step">
+      <div class="onboarding-logo">💰</div>
+      <h2 class="onboarding-title">Tu Sueldo</h2>
+      <p class="onboarding-subtitle">¿Cuánto ganas al mes? Esto nos ayuda a calcular tu balance.</p>
+      <div class="onboarding-input-group">
+        <label for="input-salary">Sueldo Mensual (Bs)</label>
+        <input type="number" id="input-salary" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+      </div>
+      <button id="btn-onboarding-next" class="btn-primary" style="margin-bottom: 12px;">Siguiente</button>
+      <button class="btn-text" onclick="App.init()">← Atrás</button>
+    </div>
+
+    <!-- Step 3: Savings Goal -->
+    <div id="onboarding-step-3" class="onboarding-step">
+      <div class="onboarding-logo">🎯</div>
+      <h2 class="onboarding-title">Meta de Ahorro</h2>
+      <p class="onboarding-subtitle">Define cuánto quieres ahorrar cada mes.</p>
+      <div class="savings-type-toggle">
+        <button class="savings-type-btn active" data-type="percentage">% Porcentaje</button>
+        <button class="savings-type-btn" data-type="fixed">Bs Fijo</button>
+      </div>
+      <div class="onboarding-input-group">
+        <label for="input-savings" id="savings-label">Porcentaje (%)</label>
+        <input type="number" id="input-savings" placeholder="10" inputmode="decimal" step="0.01" min="0">
+      </div>
+      <button id="btn-onboarding-done" class="btn-primary" style="margin-bottom: 12px;">¡Listo!</button>
+      <button id="btn-onboarding-back" class="btn-text">← Atrás</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       MAIN APP
+       ═══════════════════════════════════════ -->
+  <div id="app" class="screen hidden">
+
+    <!-- Header -->
+    <header id="app-header">
+      <span class="header-title">MiPlata</span>
+      <div class="header-month">
+        <button id="btn-prev-month" class="header-month-btn" aria-label="Mes anterior">‹</button>
+        <span id="header-month-label" class="header-month-label">Julio 2026</span>
+        <button id="btn-next-month" class="header-month-btn" aria-label="Mes siguiente">›</button>
+      </div>
+    </header>
+
+    <!-- Tab Content -->
+    <main id="tab-content">
+
+      <!-- ─── DASHBOARD ─── -->
+      <section id="tab-dashboard" class="tab-panel active">
+        <!-- Balance Card -->
+        <div class="balance-card">
+          <div class="balance-label">Balance Disponible</div>
+          <div id="dashboard-balance" class="balance-amount">0,00 Bs</div>
+          <div class="balance-row">
+            <div class="balance-detail">
+              <span class="balance-detail-label">Ingresos</span>
+              <span id="dashboard-income" class="balance-detail-value income">0,00 Bs</span>
+            </div>
+            <div class="balance-detail">
+              <span class="balance-detail-label">Gastos</span>
+              <span id="dashboard-expenses" class="balance-detail-value expense">0,00 Bs</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Savings Progress -->
+        <div class="glass-card savings-card" id="savings-progress">
+          <!-- Rendered by charts.js -->
+        </div>
+
+        <!-- Donut Chart -->
+        <h3 class="section-title">Distribución de Gastos</h3>
+        <div class="glass-card">
+          <div class="chart-container">
+            <canvas id="chart-donut"></canvas>
+            <div class="chart-center-text">
+              <div id="chart-center-label" class="chart-center-label">TOTAL</div>
+              <div id="chart-center-value" class="chart-center-value">0,00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Bars -->
+        <h3 class="section-title">Gastos por Categoría</h3>
+        <div class="glass-card">
+          <div id="category-bars" class="category-budget-list">
+            <!-- Rendered by charts.js -->
+          </div>
+        </div>
+
+        <!-- Recent Expenses -->
+        <h3 class="section-title">Últimos Gastos</h3>
+        <div id="recent-expenses" class="expense-list">
+          <!-- Rendered by app.js -->
+        </div>
+      </section>
+
+      <!-- ─── EXPENSES ─── -->
+      <section id="tab-expenses" class="tab-panel">
+        <div id="expense-filters" class="filters-bar">
+          <!-- Rendered by app.js -->
+        </div>
+        <div id="expenses-list" class="expense-list">
+          <!-- Rendered by app.js -->
+        </div>
+      </section>
+
+      <!-- ─── CATEGORIES ─── -->
+      <section id="tab-categories" class="tab-panel">
+        <h3 class="section-title">Tus Categorías</h3>
+        <div id="categories-list" class="categories-grid">
+          <!-- Rendered by app.js -->
+        </div>
+      </section>
+
+      <!-- ─── SETTINGS ─── -->
+      <section id="tab-settings" class="tab-panel">
+        <h3 class="section-title">Perfil</h3>
+        <div class="glass-card settings-group">
+          <div class="settings-item">
+            <div class="settings-icon">💰</div>
+            <div class="settings-info">
+              <div class="settings-label">Sueldo Mensual</div>
+              <div class="settings-description">Tu ingreso mensual</div>
+            </div>
+            <span id="settings-salary-value" class="settings-value">0 Bs</span>
+            <button id="btn-edit-salary" class="settings-action">Editar</button>
+          </div>
+          <div class="settings-item">
+            <div class="settings-icon">🎯</div>
+            <div class="settings-info">
+              <div class="settings-label">Meta de Ahorro</div>
+              <div class="settings-description">Cuánto quieres ahorrar al mes</div>
+            </div>
+            <span id="settings-savings-value" class="settings-value">0%</span>
+            <button id="btn-edit-savings" class="settings-action">Editar</button>
+          </div>
+        </div>
+
+        <h3 class="section-title">Respaldo</h3>
+        <div class="glass-card settings-group">
+          <div class="settings-item">
+            <div class="settings-icon">📤</div>
+            <div class="settings-info">
+              <div class="settings-label">Exportar Datos</div>
+              <div class="settings-description">Descargar respaldo como archivo JSON</div>
+            </div>
+            <button id="btn-export" class="settings-action">Exportar</button>
+          </div>
+          <div class="settings-item">
+            <div class="settings-icon">📥</div>
+            <div class="settings-info">
+              <div class="settings-label">Importar Datos</div>
+              <div class="settings-description">Restaurar desde archivo JSON</div>
+            </div>
+            <button id="btn-import" class="settings-action">Importar</button>
+          </div>
+        </div>
+
+        <h3 class="section-title">Peligro</h3>
+        <div class="glass-card settings-group">
+          <div class="settings-item">
+            <div class="settings-icon">⚠️</div>
+            <div class="settings-info">
+              <div class="settings-label">Borrar Todos los Datos</div>
+              <div class="settings-description">Eliminar toda la información de MiPlata</div>
+            </div>
+            <button id="btn-clear-data" class="settings-action danger">Borrar</button>
+          </div>
+        </div>
+
+        <div class="app-info">
+          <div class="app-info-logo">💲</div>
+          <div class="app-info-name">MiPlata v1.0</div>
+          <div>Finanzas personales, 100% offline</div>
+          <div style="margin-top: 4px;">Hecho con ❤️</div>
+        </div>
+      </section>
+    </main>
+
+    <!-- FAB -->
+    <button id="fab-add" class="fab" aria-label="Agregar gasto">＋</button>
+
+    <!-- Bottom Navigation -->
+    <nav id="bottom-nav">
+      <button class="nav-item active" data-tab="dashboard">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Inicio</span>
+      </button>
+      <button class="nav-item" data-tab="expenses">
+        <span class="nav-icon">💸</span>
+        <span class="nav-label">Gastos</span>
+      </button>
+      <button class="nav-item" data-tab="categories">
+        <span class="nav-icon">🏷️</span>
+        <span class="nav-label">Categorías</span>
+      </button>
+      <button class="nav-item" data-tab="settings">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">Ajustes</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       MODALS
+       ═══════════════════════════════════════ -->
+
+  <!-- Modal: Add/Edit Expense -->
+  <div id="modal-expense" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <h2 id="modal-expense-title" class="modal-title">Nuevo Gasto</h2>
+
+      <div class="form-group">
+        <label class="form-label" for="input-amount">Monto (Bs)</label>
+        <input type="number" class="form-input" id="input-amount" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Categoría</label>
+        <div id="category-selector" class="category-selector">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-note">Nota (opcional)</label>
+        <input type="text" class="form-input" id="input-note" placeholder="Ej: Almuerzo en cafetería" maxlength="100">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-date">Fecha</label>
+        <input type="date" class="form-input" id="input-date">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" data-close-modal="modal-expense">Cancelar</button>
+        <button id="btn-save-expense" class="btn-primary">Guardar Gasto</button>
+      </div>
+
+      <button id="btn-scan-receipt" class="btn-text" style="width:100%;margin-top:8px;text-align:center;color:var(--accent-secondary);">
+        📸 Escanear comprobante
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal: OCR Scanner -->
+  <div id="modal-ocr" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">📸 Escanear Comprobante</h2>
+
+      <div id="ocr-upload-area" class="ocr-upload-area">
+        <div class="ocr-upload-icon">📷</div>
+        <div class="ocr-upload-text">
+          <strong>Toca para tomar foto</strong><br>
+          o selecciona una imagen de la galería
+        </div>
+      </div>
+      <input type="file" id="ocr-file-input" accept="image/*" capture="environment" class="hidden">
+
+      <div id="ocr-preview" class="ocr-preview">
+        <div class="ocr-image-container">
+          <img id="ocr-image-preview" alt="Preview del comprobante">
+        </div>
+      </div>
+
+      <div id="ocr-progress" class="ocr-progress">
+        <div id="ocr-progress-text" class="ocr-progress-text">Procesando...</div>
+        <div class="progress-bar">
+          <div id="ocr-progress-fill" class="progress-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <div id="ocr-result" class="ocr-result">
+        <div class="ocr-result-label">Monto detectado</div>
+        <div id="ocr-result-amount" class="ocr-result-amount">0,00 Bs</div>
+        <input type="number" id="ocr-result-edit" class="ocr-result-edit" placeholder="Corregir monto" inputmode="decimal" step="0.01" min="0">
+      </div>
+
+      <!-- Debug: alternate amounts + raw text -->
+      <div id="ocr-debug" style="margin-top: 8px;"></div>
+
+      <div class="modal-actions" style="margin-top: 16px;">
+        <button class="btn-secondary" data-close-modal="modal-ocr">Cancelar</button>
+        <button id="btn-ocr-confirm" class="btn-primary">Usar este monto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Category -->
+  <div id="modal-category" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <h2 id="modal-category-title" class="modal-title">Nueva Categoría</h2>
+
+      <div class="form-group">
+        <label class="form-label" for="input-cat-name">Nombre</label>
+        <input type="text" class="form-input" id="input-cat-name" placeholder="Ej: Mascotas" maxlength="30">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-cat-icon">Ícono (emoji)</label>
+        <input type="text" class="form-input" id="input-cat-icon" placeholder="🐶" maxlength="4" style="font-size: 28px; text-align: center;">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-cat-color">Color</label>
+        <input type="color" class="form-input" id="input-cat-color" value="#10b981" style="height: 48px; padding: 4px;">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-cat-desc">Descripción (opcional)</label>
+        <input type="text" class="form-input" id="input-cat-desc" placeholder="Ej: Comida y accesorios para mascotas" maxlength="60">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" data-close-modal="modal-category">Cancelar</button>
+        <button id="btn-save-category" class="btn-primary">Guardar</button>
+      </div>
+
+      <button id="btn-delete-category" class="btn-danger hidden" style="width:100%;margin-top:12px;">
+        🗑️ Eliminar Categoría
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal: Action Sheet (Expense actions) -->
+  <div id="modal-actions" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <div id="action-sheet-content">
+        <!-- Rendered dynamically -->
+      </div>
+      <button class="btn-secondary" data-close-modal="modal-actions" style="margin-top:16px;">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal: Confirm Dialog -->
+  <div id="modal-confirm" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <div id="confirm-content">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCRIPTS
+       ═══════════════════════════════════════ -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="db.js"></script>
+  <script src="charts.js"></script>
+  <script src="ocr.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
