@@ -2,7 +2,7 @@
    MiPlata — Service Worker (Cache-First)
    ============================================ */
 
-const CACHE_VERSION = 'miplata-v4';
+const CACHE_VERSION = 'miplata-v5';
 
 // Detect base path dynamically (works on GitHub Pages, Vercel, Netlify, etc.)
 const BASE = self.registration.scope;
