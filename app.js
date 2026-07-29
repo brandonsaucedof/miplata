@@ -1065,8 +1065,14 @@ const App = (() => {
   /* ════════════════════════════════════════
      PUBLIC API
      ════════════════════════════════════════ */
+  function processSharedFile(file) {
+    showOCRModal();
+    handleOCRFile(file);
+  }
+
   return {
     init,
+    processSharedFile,
     switchTab,
     showExpenseModal,
     saveExpense,
@@ -1113,8 +1119,8 @@ document.addEventListener('DOMContentLoaded', () => {
               const file = new File([blob], 'comprobante_compartido.jpg', { type: blob.type || 'image/jpeg' });
               
               // Open OCR Modal with the file
-              if (typeof OcrModule !== 'undefined' && OcrModule.openModal) {
-                OcrModule.openModal(file);
+              if (typeof App !== 'undefined' && App.processSharedFile) {
+                App.processSharedFile(file);
               }
               
               // Clean up the cache and URL
