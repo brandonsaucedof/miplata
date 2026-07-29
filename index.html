@@ -42,34 +42,106 @@
       <button id="btn-onboarding-start" class="btn-primary">Comenzar</button>
     </div>
 
-    <!-- Step 2: Salary -->
+    <!-- Step 2: Create First Account -->
     <div id="onboarding-step-2" class="onboarding-step">
-      <div class="onboarding-logo">💰</div>
-      <h2 class="onboarding-title">Tu Sueldo</h2>
-      <p class="onboarding-subtitle">¿Cuánto ganas al mes? Esto nos ayuda a calcular tu balance.</p>
+      <div class="onboarding-logo">🏦</div>
+      <h2 class="onboarding-title">Tu Dinero Actual</h2>
+      <p class="onboarding-subtitle">Crea tu cuenta principal y dinos cuánto dinero tienes en ella ahora mismo.</p>
+      
       <div class="onboarding-input-group">
-        <label for="input-salary">Sueldo Mensual (Bs)</label>
-        <input type="number" id="input-salary" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+        <label>Nombre de la Cuenta</label>
+        <input type="text" id="ob-account-name" placeholder="Ej: Banco, Monedero, Efectivo" value="Efectivo">
       </div>
-      <button id="btn-onboarding-next" class="btn-primary" style="margin-bottom: 12px;">Siguiente</button>
-      <button class="btn-text" onclick="App.init()">← Atrás</button>
+      
+      <div class="onboarding-input-group">
+        <label>Tipo de Cuenta</label>
+        <div class="account-type-selector">
+          <button class="acc-type-btn active" data-type="cash">💵 Efectivo</button>
+          <button class="acc-type-btn" data-type="bank">🏦 Banco</button>
+          <button class="acc-type-btn" data-type="wallet">💳 Monedero</button>
+          <button class="acc-type-btn" data-type="savings">💰 Ahorro</button>
+        </div>
+      </div>
+
+      <div class="onboarding-input-group">
+        <label>Balance Actual (Bs)</label>
+        <input type="number" id="ob-account-balance" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+      </div>
+
+      <button id="btn-onboarding-step2-next" class="btn-primary" style="margin-bottom: 12px;">Siguiente</button>
+      <button class="btn-text" onclick="document.getElementById('onboarding-step-2').classList.remove('active'); document.getElementById('onboarding-step-1').classList.add('active');">← Atrás</button>
     </div>
 
-    <!-- Step 3: Savings Goal -->
+    <!-- Step 3: Salary Info -->
     <div id="onboarding-step-3" class="onboarding-step">
-      <div class="onboarding-logo">🎯</div>
-      <h2 class="onboarding-title">Meta de Ahorro</h2>
-      <p class="onboarding-subtitle">Define cuánto quieres ahorrar cada mes.</p>
-      <div class="savings-type-toggle">
-        <button class="savings-type-btn active" data-type="percentage">% Porcentaje</button>
-        <button class="savings-type-btn" data-type="fixed">Bs Fijo</button>
-      </div>
+      <div class="onboarding-logo">💸</div>
+      <h2 class="onboarding-title">Tu Último Ingreso</h2>
+      <p class="onboarding-subtitle">¿Cuándo recibiste tu último sueldo o ingreso importante y de cuánto fue?</p>
+      
       <div class="onboarding-input-group">
-        <label for="input-savings" id="savings-label">Porcentaje (%)</label>
-        <input type="number" id="input-savings" placeholder="10" inputmode="decimal" step="0.01" min="0">
+        <label>Monto Recibido (Bs)</label>
+        <input type="number" id="ob-salary-amount" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
       </div>
-      <button id="btn-onboarding-done" class="btn-primary" style="margin-bottom: 12px;">¡Listo!</button>
-      <button id="btn-onboarding-back" class="btn-text">← Atrás</button>
+
+      <div class="onboarding-input-group">
+        <label>Fecha de Pago</label>
+        <input type="date" id="ob-salary-date">
+      </div>
+
+      <button id="btn-onboarding-step3-next" class="btn-primary" style="margin-bottom: 12px;">Siguiente</button>
+      <button class="btn-text" onclick="document.getElementById('onboarding-step-3').classList.remove('active'); document.getElementById('onboarding-step-2').classList.add('active');">← Atrás</button>
+    </div>
+
+    <!-- Step 4: Categories -->
+    <div id="onboarding-step-4" class="onboarding-step">
+      <div class="onboarding-logo">🏷️</div>
+      <h2 class="onboarding-title">Tus Categorías</h2>
+      <p class="onboarding-subtitle">Estas son las categorías base. Puedes crear más después en Ajustes.</p>
+      
+      <div style="width:100%; text-align:left; margin-bottom: 16px;">
+        <label style="font-size:13px; font-weight:600; color:var(--text-secondary); text-transform:uppercase;">Gastos Principales</label>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🍔 Comida</span>
+          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🚌 Transporte</span>
+          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🛒 Súper</span>
+          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🏠 Hogar</span>
+          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🎮 Ocio</span>
+        </div>
+      </div>
+
+      <div style="width:100%; text-align:left; margin-bottom: 24px;">
+        <label style="font-size:13px; font-weight:600; color:var(--text-secondary); text-transform:uppercase;">Ingresos Principales</label>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">💼 Sueldo</span>
+          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">💻 Freelance</span>
+          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🎁 Regalo</span>
+        </div>
+      </div>
+
+      <button id="btn-onboarding-step4-next" class="btn-primary" style="margin-bottom: 12px;">Siguiente</button>
+      <button class="btn-text" onclick="document.getElementById('onboarding-step-4').classList.remove('active'); document.getElementById('onboarding-step-3').classList.add('active');">← Atrás</button>
+    </div>
+
+    <!-- Step 5: Past Expenses -->
+    <div id="onboarding-step-5" class="onboarding-step">
+      <div class="onboarding-logo">📝</div>
+      <h2 class="onboarding-title">Gastos hasta hoy</h2>
+      <p class="onboarding-subtitle">Recibiste <span id="ob-summary-income" style="font-weight:bold;color:var(--accent-primary);">0</span> y ahora tienes <span id="ob-summary-balance" style="font-weight:bold;">0</span>.<br>Has gastado <span id="ob-summary-spent" style="font-weight:bold;color:var(--expense-red);">0</span>.</p>
+      
+      <p style="font-size:14px; color:var(--text-secondary); margin-bottom:16px;">Vamos a registrar ese gasto para que las analíticas sean exactas.</p>
+
+      <div class="onboarding-input-group">
+        <label>Categoría del gasto pasado</label>
+        <select id="ob-past-expense-category">
+          <option value="cat-general">Varios / General</option>
+          <option value="cat-comida">Comida</option>
+          <option value="cat-transporte">Transporte</option>
+          <option value="cat-hogar">Hogar</option>
+        </select>
+      </div>
+
+      <button id="btn-onboarding-done" class="btn-primary" style="margin-bottom: 12px;">¡Finalizar y empezar!</button>
+      <button class="btn-text" onclick="document.getElementById('onboarding-step-5').classList.remove('active'); document.getElementById('onboarding-step-4').classList.add('active');">← Atrás</button>
     </div>
   </div>
 
@@ -95,7 +167,7 @@
       <section id="tab-dashboard" class="tab-panel active">
         <!-- Balance Card -->
         <div class="balance-card">
-          <div class="balance-label">Balance Disponible</div>
+          <div class="balance-label">Balance Total</div>
           <div id="dashboard-balance" class="balance-amount">0,00 Bs</div>
           <div class="balance-row">
             <div class="balance-detail">
@@ -109,14 +181,68 @@
           </div>
         </div>
 
+        <!-- Account Cards -->
+        <h3 class="section-title">Mis Cuentas</h3>
+        <div id="dashboard-accounts" class="accounts-scroll">
+          <!-- Rendered by app.js -->
+        </div>
+
         <!-- Savings Progress -->
         <div class="glass-card savings-card" id="savings-progress">
           <!-- Rendered by charts.js -->
         </div>
 
+        <!-- Recent Transactions -->
+        <h3 class="section-title">Últimos Movimientos</h3>
+        <div id="recent-expenses" class="expense-list">
+          <!-- Rendered by app.js -->
+        </div>
+      </section>
+
+      <!-- ─── MOVEMENTS (was EXPENSES) ─── -->
+      <section id="tab-movements" class="tab-panel">
+        <!-- Type filter (Income / Expense / All) -->
+        <div id="movement-type-filter" class="movement-type-filter">
+          <button class="type-filter-btn active" data-filter="all">Todos</button>
+          <button class="type-filter-btn" data-filter="expense">Gastos</button>
+          <button class="type-filter-btn" data-filter="income">Ingresos</button>
+        </div>
+        <div id="expense-filters" class="filters-bar">
+          <!-- Rendered by app.js -->
+        </div>
+        <div id="expenses-list" class="expense-list">
+          <!-- Rendered by app.js -->
+        </div>
+      </section>
+
+      <!-- ─── ACCOUNTS ─── -->
+      <section id="tab-accounts" class="tab-panel">
+        <h3 class="section-title">Mis Cuentas</h3>
+        <div id="accounts-total-balance" class="accounts-total-card">
+          <!-- Rendered by app.js -->
+        </div>
+        <div id="accounts-list" class="accounts-list">
+          <!-- Rendered by app.js -->
+        </div>
+        <button class="add-category-btn" onclick="App.showAccountModal()">
+          <span>＋</span> Nueva Cuenta
+        </button>
+
+        <h3 class="section-title" style="margin-top: 24px;">Transferencias Rápidas</h3>
+        <button class="glass-card transfer-btn" onclick="App.showTransferModal()" style="width:100%;text-align:center;cursor:pointer;border:none;">
+          <div style="font-size:24px;margin-bottom:4px;">🔄</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text-primary);">Transferir entre cuentas</div>
+          <div style="font-size:12px;color:var(--text-muted);">Mover dinero de una cuenta a otra</div>
+        </button>
+      </section>
+
+      <!-- ─── ANALYTICS ─── -->
+      <section id="tab-analytics" class="tab-panel">
+        <h3 class="section-title">Analíticas del Mes</h3>
+        
         <!-- Donut Chart -->
-        <h3 class="section-title">Distribución de Gastos</h3>
-        <div class="glass-card">
+        <div class="glass-card" style="margin-bottom: var(--space-md);">
+          <h4 style="font-size:14px; color:var(--text-secondary); margin-bottom:12px;">Distribución de Gastos</h4>
           <div class="chart-container">
             <canvas id="chart-donut"></canvas>
             <div class="chart-center-text">
@@ -127,51 +253,19 @@
         </div>
 
         <!-- Category Bars -->
-        <h3 class="section-title">Gastos por Categoría</h3>
         <div class="glass-card">
+          <h4 style="font-size:14px; color:var(--text-secondary); margin-bottom:12px;">Gastos por Categoría</h4>
           <div id="category-bars" class="category-budget-list">
             <!-- Rendered by charts.js -->
           </div>
-        </div>
-
-        <!-- Recent Expenses -->
-        <h3 class="section-title">Últimos Gastos</h3>
-        <div id="recent-expenses" class="expense-list">
-          <!-- Rendered by app.js -->
-        </div>
-      </section>
-
-      <!-- ─── EXPENSES ─── -->
-      <section id="tab-expenses" class="tab-panel">
-        <div id="expense-filters" class="filters-bar">
-          <!-- Rendered by app.js -->
-        </div>
-        <div id="expenses-list" class="expense-list">
-          <!-- Rendered by app.js -->
-        </div>
-      </section>
-
-      <!-- ─── CATEGORIES ─── -->
-      <section id="tab-categories" class="tab-panel">
-        <h3 class="section-title">Tus Categorías</h3>
-        <div id="categories-list" class="categories-grid">
-          <!-- Rendered by app.js -->
         </div>
       </section>
 
       <!-- ─── SETTINGS ─── -->
       <section id="tab-settings" class="tab-panel">
-        <h3 class="section-title">Perfil</h3>
+
+        <h3 class="section-title">Ahorro</h3>
         <div class="glass-card settings-group">
-          <div class="settings-item">
-            <div class="settings-icon">💰</div>
-            <div class="settings-info">
-              <div class="settings-label">Sueldo Mensual</div>
-              <div class="settings-description">Tu ingreso mensual</div>
-            </div>
-            <span id="settings-salary-value" class="settings-value">0 Bs</span>
-            <button id="btn-edit-salary" class="settings-action">Editar</button>
-          </div>
           <div class="settings-item">
             <div class="settings-icon">🎯</div>
             <div class="settings-info">
@@ -180,6 +274,18 @@
             </div>
             <span id="settings-savings-value" class="settings-value">0%</span>
             <button id="btn-edit-savings" class="settings-action">Editar</button>
+          </div>
+        </div>
+
+        <h3 class="section-title">Categorías</h3>
+        <div class="glass-card settings-group">
+          <div class="settings-item" onclick="App.showCategoriesManager()" style="cursor:pointer;">
+            <div class="settings-icon">🏷️</div>
+            <div class="settings-info">
+              <div class="settings-label">Gestionar Categorías</div>
+              <div class="settings-description">Crear, editar y eliminar categorías de gastos e ingresos</div>
+            </div>
+            <span class="settings-arrow">›</span>
           </div>
         </div>
 
@@ -217,7 +323,7 @@
 
         <div class="app-info">
           <div class="app-info-logo">💲</div>
-          <div class="app-info-name">MiPlata v1.0</div>
+          <div class="app-info-name">MiPlata v2.0</div>
           <div>Finanzas personales, 100% offline</div>
           <div style="margin-top: 4px;">Hecho con ❤️</div>
         </div>
@@ -225,7 +331,7 @@
     </main>
 
     <!-- FAB -->
-    <button id="fab-add" class="fab" aria-label="Agregar gasto">＋</button>
+    <button id="fab-add" class="fab" aria-label="Agregar movimiento">＋</button>
 
     <!-- Bottom Navigation -->
     <nav id="bottom-nav">
@@ -233,13 +339,17 @@
         <span class="nav-icon">📊</span>
         <span class="nav-label">Inicio</span>
       </button>
-      <button class="nav-item" data-tab="expenses">
+      <button class="nav-item" data-tab="movements">
         <span class="nav-icon">💸</span>
-        <span class="nav-label">Gastos</span>
+        <span class="nav-label">Movis</span>
       </button>
-      <button class="nav-item" data-tab="categories">
-        <span class="nav-icon">🏷️</span>
-        <span class="nav-label">Categorías</span>
+      <button class="nav-item" data-tab="accounts">
+        <span class="nav-icon">💳</span>
+        <span class="nav-label">Cuentas</span>
+      </button>
+      <button class="nav-item" data-tab="analytics">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Análisis</span>
       </button>
       <button class="nav-item" data-tab="settings">
         <span class="nav-icon">⚙️</span>
@@ -266,6 +376,13 @@
       <div class="form-group">
         <label class="form-label" for="input-amount">Monto (Bs)</label>
         <input type="number" class="form-input" id="input-amount" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Cuenta</label>
+        <div id="account-selector" class="account-selector">
+          <!-- Rendered dynamically -->
+        </div>
       </div>
 
       <div class="form-group">
@@ -379,6 +496,117 @@
       <button id="btn-delete-category" class="btn-danger hidden" style="width:100%;margin-top:12px;">
         🗑️ Eliminar Categoría
       </button>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Account -->
+  <div id="modal-account" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <h2 id="modal-account-title" class="modal-title">Nueva Cuenta</h2>
+
+      <div class="form-group">
+        <label class="form-label" for="input-acc-name">Nombre</label>
+        <input type="text" class="form-input" id="input-acc-name" placeholder="Ej: Banco Nacional" maxlength="30">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-acc-icon">Ícono (emoji)</label>
+        <input type="text" class="form-input" id="input-acc-icon" placeholder="🏦" maxlength="4" style="font-size: 28px; text-align: center;">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-acc-color">Color</label>
+        <input type="color" class="form-input" id="input-acc-color" value="#3b82f6" style="height: 48px; padding: 4px;">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Tipo de Cuenta</label>
+        <div id="account-type-selector" class="account-type-selector">
+          <button class="acc-type-btn active" data-type="wallet">💳 Monedero</button>
+          <button class="acc-type-btn" data-type="bank">🏦 Banco</button>
+          <button class="acc-type-btn" data-type="savings">🐷 Ahorro</button>
+          <button class="acc-type-btn" data-type="other">📦 Otro</button>
+        </div>
+      </div>
+
+      <div class="form-group" id="account-balance-group">
+        <label class="form-label" for="input-acc-balance">Balance Inicial (Bs)</label>
+        <input type="number" class="form-input" id="input-acc-balance" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" data-close-modal="modal-account">Cancelar</button>
+        <button id="btn-save-account" class="btn-primary">Guardar</button>
+      </div>
+
+      <button id="btn-delete-account" class="btn-danger hidden" style="width:100%;margin-top:12px;">
+        🗑️ Eliminar Cuenta
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal: Transfer -->
+  <div id="modal-transfer" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">🔄 Transferir entre Cuentas</h2>
+
+      <div class="form-group">
+        <label class="form-label">Desde</label>
+        <div id="transfer-from-selector" class="account-selector">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:24px;margin:8px 0;color:var(--text-muted);">↓</div>
+
+      <div class="form-group">
+        <label class="form-label">Hacia</label>
+        <div id="transfer-to-selector" class="account-selector">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-transfer-amount">Monto (Bs)</label>
+        <input type="number" class="form-input" id="input-transfer-amount" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-transfer-note">Nota (opcional)</label>
+        <input type="text" class="form-input" id="input-transfer-note" placeholder="Ej: Pase a ahorro" maxlength="100">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" data-close-modal="modal-transfer">Cancelar</button>
+        <button id="btn-save-transfer" class="btn-primary">Transferir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Categories Manager -->
+  <div id="modal-categories-manager" class="modal-overlay">
+    <div class="modal-content" style="max-height: 85vh; overflow-y: auto;">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">🏷️ Categorías</h2>
+      
+      <div class="transaction-type-selector" id="categories-manager-type-selector">
+        <button class="type-btn active" data-type="expense">Gastos</button>
+        <button class="type-btn" data-type="income">Ingresos</button>
+      </div>
+
+      <div id="categories-manager-list" class="categories-grid" style="margin-top:12px;">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <button class="add-category-btn" onclick="App.showCategoryModal()" style="margin-top:12px;">
+        <span>＋</span> Nueva Categoría
+      </button>
+
+      <div class="modal-actions" style="margin-top:16px;">
+        <button class="btn-secondary" data-close-modal="modal-categories-manager" style="width:100%;">Cerrar</button>
+      </div>
     </div>
   </div>
 

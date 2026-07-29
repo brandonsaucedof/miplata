@@ -30,6 +30,7 @@
   --accent-warning: #f59e0b;
   --accent-danger: #ef4444;
   --accent-info: #3b82f6;
+  --expense-red: #ef4444;
 
   /* Text */
   --text-primary: #f1f5f9;
@@ -499,11 +500,12 @@ img {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 8px 16px;
+  padding: 8px 4px;
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
   position: relative;
-  min-width: 64px;
+  min-width: 56px;
+  flex: 1;
 }
 
 .nav-icon {
@@ -1617,4 +1619,467 @@ textarea.form-input {
   background: var(--bg-primary);
   color: var(--accent-primary);
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* ================================================
+   ONBOARDING ACCOUNTS
+   ================================================ */
+.onboarding-accounts-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.onboarding-account-item {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  animation: fadeSlideUp 0.3s ease both;
+}
+
+.onboarding-account-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.onboarding-account-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.onboarding-account-info {
+  flex: 1;
+}
+
+.onboarding-account-name {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.onboarding-account-name:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.onboarding-account-remove {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-muted);
+  background: rgba(239, 68, 68, 0.1);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.onboarding-account-remove:active {
+  background: rgba(239, 68, 68, 0.25);
+  color: var(--accent-danger);
+}
+
+.onboarding-account-balance {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.onboarding-account-balance label {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.onboarding-account-balance input {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.onboarding-account-balance input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+/* ================================================
+   DASHBOARD ACCOUNT MINI-CARDS
+   ================================================ */
+.accounts-scroll {
+  display: flex;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  padding: 0 var(--space-lg) var(--space-md);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.accounts-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.account-mini-card {
+  min-width: 180px;
+  max-width: 220px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.account-mini-card:active {
+  transform: scale(0.97);
+  background: var(--bg-card-hover);
+}
+
+.account-mini-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.account-mini-info {
+  flex: 1;
+}
+
+.account-mini-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.account-mini-type {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.account-mini-balance {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ================================================
+   ACCOUNT SELECTOR (Modal)
+   ================================================ */
+.account-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.account-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.account-option:active {
+  transform: scale(0.98);
+}
+
+.account-option.selected {
+  border-color: var(--accent-primary);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.account-option-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.account-option-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.account-option-balance {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ================================================
+   ACCOUNTS TAB
+   ================================================ */
+.accounts-total-card {
+  margin: 0 var(--space-lg) var(--space-md);
+}
+
+.accounts-total-inner {
+  text-align: center;
+  padding: var(--space-lg);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+}
+
+.accounts-total-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--space-xs);
+}
+
+.accounts-total-amount {
+  font-size: 32px;
+  font-weight: 800;
+  margin-bottom: var(--space-xs);
+}
+
+.accounts-total-count {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.accounts-list {
+  padding: 0 var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.account-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.account-card:active {
+  transform: scale(0.98);
+  background: var(--bg-card-hover);
+}
+
+.account-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.account-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.account-card-info {
+  flex: 1;
+}
+
+.account-card-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.account-card-type {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.account-card-balance {
+  font-size: 18px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.account-card-stats {
+  display: flex;
+  gap: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--glass-border);
+}
+
+.account-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.account-stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+
+.account-stat-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.account-stat-value.income {
+  color: var(--accent-primary);
+}
+
+.account-stat-value.expense {
+  color: var(--expense-red);
+}
+
+/* ================================================
+   ACCOUNT TYPE SELECTOR
+   ================================================ */
+.account-type-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xs);
+}
+
+.acc-type-btn {
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--bg-card);
+  border: 2px solid transparent;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.acc-type-btn.active {
+  border-color: var(--accent-primary);
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--accent-primary);
+}
+
+.acc-type-btn:active {
+  transform: scale(0.97);
+}
+
+/* ================================================
+   MOVEMENT TYPE FILTER
+   ================================================ */
+.movement-type-filter {
+  display: flex;
+  gap: 6px;
+  padding: var(--space-sm) var(--space-lg);
+  margin-bottom: var(--space-xs);
+}
+
+.type-filter-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.type-filter-btn.active {
+  background: var(--gradient-primary);
+  color: var(--text-inverse);
+  border-color: transparent;
+  box-shadow: var(--shadow-glow);
+}
+
+.type-filter-btn:active {
+  transform: scale(0.97);
+}
+
+/* ================================================
+   EXPENSE ACCOUNT BADGE
+   ================================================ */
+.expense-account {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ================================================
+   SETTINGS ARROW
+   ================================================ */
+.settings-arrow {
+  font-size: 18px;
+  color: var(--text-muted);
+  margin-left: auto;
+  padding-left: var(--space-sm);
+}
+
+/* ================================================
+   TRANSFER BUTTON
+   ================================================ */
+.transfer-btn {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: var(--space-lg) !important;
+}
+
+.transfer-btn:active {
+  transform: scale(0.98);
+  background: var(--bg-card-hover);
 }

@@ -1,10 +1,10 @@
 /* ============================================
-   MiPlata — IndexedDB Data Layer
+   MiPlata — IndexedDB Data Layer (v2)
    ============================================ */
 
 const MiPlataDB = (() => {
   const DB_NAME = 'miplata';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   let db = null;
 
   /* ── Default categories ── */
@@ -23,8 +23,15 @@ const MiPlataDB = (() => {
     // Ingresos
     { id: 'cat-sueldo',          name: 'Sueldo',          icon: '💰', color: '#10b981', description: 'Ingreso principal', type: 'income' },
     { id: 'cat-ventas',          name: 'Ventas',          icon: '🏷️', color: '#8b5cf6', description: 'Venta de artículos', type: 'income' },
+    { id: 'cat-freelance',       name: 'Freelance',       icon: '💻', color: '#3b82f6', description: 'Trabajos independientes', type: 'income' },
     { id: 'cat-regalo',          name: 'Regalo',          icon: '🎁', color: '#ec4899', description: 'Dinero regalado', type: 'income' },
-    { id: 'cat-otros-ingresos',  name: 'Otros Ingresos',  icon: '💵', color: '#3b82f6', description: 'Ingreso extra', type: 'income' }
+    { id: 'cat-otros-ingresos',  name: 'Otros Ingresos',  icon: '💵', color: '#06b6d4', description: 'Ingreso extra', type: 'income' }
+  ];
+
+  /* ── Default accounts ── */
+  const DEFAULT_ACCOUNTS = [
+    { id: 'acc-monedero', name: 'Monedero',  icon: '💳', color: '#10b981', type: 'wallet',  balance: 0, createdAt: new Date().toISOString() },
+    { id: 'acc-banco',    name: 'Banco',     icon: '🏦', color: '#3b82f6', type: 'bank',    balance: 0, createdAt: new Date().toISOString() }
   ];
 
   /* ── Open / upgrade DB ── */
@@ -36,7 +43,9 @@ const MiPlataDB = (() => {
 
       request.onupgradeneeded = (e) => {
         const database = e.target.result;
+        const oldVersion = e.oldVersion;
 
+        // --- v1 stores (create if fresh install) ---
         if (!database.objectStoreNames.contains('profile')) {
           database.createObjectStore('profile', { keyPath: 'id' });
         }
@@ -51,6 +60,20 @@ const MiPlataDB = (() => {
         if (!database.objectStoreNames.contains('categories')) {
           database.createObjectStore('categories', { keyPath: 'id' });
         }
+
+        // --- v2: Add accounts store ---
+        if (!database.objectStoreNames.contains('accounts')) {
+          database.createObjectStore('accounts', { keyPath: 'id' });
+        }
+
+        // Add accountId index to expenses if upgrading from v1
+        if (oldVersion < 2 && database.objectStoreNames.contains('expenses')) {
+          const tx = e.target.transaction;
+          const expStore = tx.objectStore('expenses');
+          if (!expStore.indexNames.contains('accountId')) {
+            expStore.createIndex('accountId', 'accountId', { unique: false });
+          }
+        }
       };
 
       request.onsuccess = (e) => {
@@ -62,9 +85,11 @@ const MiPlataDB = (() => {
     });
   }
 
-  /* ── Initialize: open DB + seed defaults ── */
+  /* ── Initialize: open DB + seed defaults + migrate ── */
   async function init() {
     await open();
+
+    // Seed default categories
     const cats = await getAll('categories');
     if (cats.length === 0) {
       const tx = db.transaction('categories', 'readwrite');
@@ -74,6 +99,56 @@ const MiPlataDB = (() => {
       }
       await txComplete(tx);
     }
+
+    // Seed default accounts
+    const accounts = await getAll('accounts');
+    if (accounts.length === 0) {
+      const tx = db.transaction('accounts', 'readwrite');
+      const store = tx.objectStore('accounts');
+      for (const acc of DEFAULT_ACCOUNTS) {
+        store.put(acc);
+      }
+      await txComplete(tx);
+    }
+
+    // Migration: assign existing expenses without accountId to a default account
+    await migrateExpensesToAccounts();
+  }
+
+  /* ── Migrate v1 expenses (no accountId) to default account ── */
+  async function migrateExpensesToAccounts() {
+    const expenses = await getAll('expenses');
+    const needsMigration = expenses.filter(e => !e.accountId);
+    
+    if (needsMigration.length === 0) return;
+
+    // Get or create a "General" account for legacy data
+    const accounts = await getAll('accounts');
+    let defaultAccount = accounts.find(a => a.id === 'acc-monedero') || accounts[0];
+    
+    if (!defaultAccount) {
+      defaultAccount = {
+        id: 'acc-general',
+        name: 'General',
+        icon: '💰',
+        color: '#6b7280',
+        type: 'wallet',
+        balance: 0,
+        createdAt: new Date().toISOString()
+      };
+      await save('accounts', defaultAccount);
+    }
+
+    // Assign all unlinked expenses to the default account
+    const tx = db.transaction('expenses', 'readwrite');
+    const store = tx.objectStore('expenses');
+    for (const exp of needsMigration) {
+      exp.accountId = defaultAccount.id;
+      store.put(exp);
+    }
+    await txComplete(tx);
+
+    console.log(`[MiPlata] Migrated ${needsMigration.length} transactions to account: ${defaultAccount.name}`);
   }
 
   /* ── Helper: wait for transaction to complete ── */
@@ -158,10 +233,11 @@ const MiPlataDB = (() => {
 
   /* ── Export entire database as JSON ── */
   async function exportAll() {
-    const [profile, expenses, categories] = await Promise.all([
+    const [profile, expenses, categories, accounts] = await Promise.all([
       getAll('profile'),
       getAll('expenses'),
-      getAll('categories')
+      getAll('categories'),
+      getAll('accounts')
     ]);
     return {
       appName: 'MiPlata',
@@ -169,7 +245,8 @@ const MiPlataDB = (() => {
       exportDate: new Date().toISOString(),
       profile,
       expenses,
-      categories
+      categories,
+      accounts
     };
   }
 
@@ -179,11 +256,12 @@ const MiPlataDB = (() => {
       await Promise.all([
         clear('profile'),
         clear('expenses'),
-        clear('categories')
+        clear('categories'),
+        clear('accounts')
       ]);
     }
 
-    const stores = ['profile', 'expenses', 'categories'];
+    const stores = ['profile', 'expenses', 'categories', 'accounts'];
     for (const storeName of stores) {
       const items = data[storeName] || [];
       for (const item of items) {
@@ -213,6 +291,7 @@ const MiPlataDB = (() => {
     exportAll,
     importAll,
     generateId,
-    DEFAULT_CATEGORIES
+    DEFAULT_CATEGORIES,
+    DEFAULT_ACCOUNTS
   };
 })();

@@ -1,5 +1,6 @@
 /* ============================================
-   MiPlata — Main Application Logic
+   MiPlata — Main Application Logic (v2)
+   Multi-Account System
    ============================================ */
 
 const App = (() => {
@@ -7,19 +8,30 @@ const App = (() => {
      STATE
      ════════════════════════════════════════ */
   let state = {
-    profile: null,        // { id, salary, currency, savingsType, savingsValue }
-    expenses: [],         // Current month expenses
+    profile: null,        // { id, currency, savingsType, savingsValue }
+    accounts: [],         // All accounts
+    expenses: [],         // Current month transactions
     categories: [],       // All categories
     currentMonth: '',     // 'YYYY-MM'
     currentTab: 'dashboard',
     editingExpense: null,
-    editingCategory: null
+    editingCategory: null,
+    editingAccount: null,
+    movementFilter: 'all' // 'all' | 'expense' | 'income'
   };
 
   const MONTHS_ES = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
   ];
+
+  const ACCOUNT_TYPES = {
+    cash: { label: 'Efectivo', icon: '💵' },
+    wallet: { label: 'Monedero', icon: '💳' },
+    bank: { label: 'Banco', icon: '🏦' },
+    savings: { label: 'Ahorro', icon: '💰' },
+    other: { label: 'Otro', icon: '📦' }
+  };
 
   /* ════════════════════════════════════════
      INITIALIZATION
@@ -31,6 +43,7 @@ const App = (() => {
     // Load profile
     state.profile = await MiPlataDB.get('profile', 'main');
     state.categories = await MiPlataDB.getAll('categories');
+    state.accounts = await MiPlataDB.getAll('accounts');
 
     // Set current month
     const now = new Date();
@@ -47,12 +60,57 @@ const App = (() => {
   }
 
   /* ════════════════════════════════════════
-     ONBOARDING
+     ONBOARDING WIZARD
      ════════════════════════════════════════ */
+  let obState = {
+    account: { name: 'Efectivo', type: 'cash', balance: 0 },
+    salary: { amount: 0, date: '' },
+    pastExpenseCategory: 'cat-general'
+  };
+
   function showOnboarding() {
     document.getElementById('onboarding').classList.remove('hidden');
     document.getElementById('app').classList.add('hidden');
     showOnboardingStep(1);
+
+    // Bind step navigation
+    document.getElementById('btn-onboarding-start')?.addEventListener('click', () => showOnboardingStep(2));
+    
+    document.getElementById('btn-onboarding-step2-next')?.addEventListener('click', () => {
+      obState.account.name = document.getElementById('ob-account-name').value.trim() || 'Principal';
+      obState.account.type = document.querySelector('.acc-type-btn.active')?.dataset.type || 'cash';
+      obState.account.balance = parseFloat(document.getElementById('ob-account-balance').value) || 0;
+      showOnboardingStep(3);
+    });
+
+    document.getElementById('btn-onboarding-step3-next')?.addEventListener('click', () => {
+      obState.salary.amount = parseFloat(document.getElementById('ob-salary-amount').value) || 0;
+      obState.salary.date = document.getElementById('ob-salary-date').value;
+      if (!obState.salary.amount || !obState.salary.date) {
+        showToast('Por favor, ingresa el monto y la fecha', 'error');
+        return;
+      }
+      showOnboardingStep(4);
+    });
+
+    document.getElementById('btn-onboarding-step4-next')?.addEventListener('click', () => {
+      // Calculate past expenses
+      const spent = obState.salary.amount - obState.account.balance;
+      document.getElementById('ob-summary-income').textContent = formatAmount(obState.salary.amount) + ' Bs';
+      document.getElementById('ob-summary-balance').textContent = formatAmount(obState.account.balance) + ' Bs';
+      document.getElementById('ob-summary-spent').textContent = formatAmount(spent > 0 ? spent : 0) + ' Bs';
+      showOnboardingStep(5);
+    });
+
+    document.getElementById('btn-onboarding-done')?.addEventListener('click', completeOnboarding);
+
+    // Bind account type selector in Step 2
+    document.querySelectorAll('.acc-type-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.acc-type-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+      });
+    });
   }
 
   function showOnboardingStep(step) {
@@ -62,35 +120,85 @@ const App = (() => {
   }
 
   async function completeOnboarding() {
-    const salary = parseFloat(document.getElementById('input-salary').value);
-    const savingsType = document.querySelector('.savings-type-btn.active')?.dataset.type || 'percentage';
-    const savingsValue = parseFloat(document.getElementById('input-savings').value);
+    obState.pastExpenseCategory = document.getElementById('ob-past-expense-category').value;
 
-    if (!salary || salary <= 0) {
-      showToast('Ingresa tu sueldo mensual', 'error');
-      return;
-    }
-
-    if (!savingsValue || savingsValue <= 0) {
-      showToast('Ingresa tu meta de ahorro', 'error');
-      return;
-    }
-
-    if (savingsType === 'percentage' && savingsValue > 100) {
-      showToast('El porcentaje no puede ser mayor a 100%', 'error');
-      return;
-    }
-
+    // Save profile (no specific savings goal for now, default to 0%)
     state.profile = {
       id: 'main',
-      salary,
       currency: 'Bs',
-      savingsType,
-      savingsValue,
+      savingsType: 'percentage',
+      savingsValue: 0,
       createdAt: new Date().toISOString()
     };
-
     await MiPlataDB.save('profile', state.profile);
+
+    // Create the primary account
+    await MiPlataDB.clear('accounts');
+    const account = {
+      id: MiPlataDB.generateId('acc-'),
+      name: obState.account.name,
+      icon: ACCOUNT_TYPES[obState.account.type]?.icon || '💰',
+      color: '#10b981', // Default emerald
+      type: obState.account.type,
+      balance: obState.account.balance,
+      createdAt: new Date().toISOString()
+    };
+    await MiPlataDB.save('accounts', account);
+
+    // Create initial categories if not exist
+    let categories = await MiPlataDB.getAll('categories');
+    if (categories.length === 0) {
+      const defaultCats = [
+        { name: 'Sueldo', icon: '💼', color: '#10b981', type: 'income' },
+        { name: 'Freelance', icon: '💻', color: '#3b82f6', type: 'income' },
+        { name: 'Regalo', icon: '🎁', color: '#f59e0b', type: 'income' },
+        { id: 'cat-comida', name: 'Comida', icon: '🍔', color: '#ef4444', type: 'expense' },
+        { id: 'cat-transporte', name: 'Transporte', icon: '🚌', color: '#f97316', type: 'expense' },
+        { id: 'cat-hogar', name: 'Hogar', icon: '🏠', color: '#8b5cf6', type: 'expense' },
+        { id: 'cat-general', name: 'General', icon: '📝', color: '#64748b', type: 'expense' }
+      ];
+      for (const cat of defaultCats) {
+        cat.id = cat.id || MiPlataDB.generateId('cat-');
+        await MiPlataDB.save('categories', cat);
+      }
+    }
+
+    // Determine the month of the salary
+    const [y, m] = obState.salary.date.split('-');
+    const salaryMonth = `${y}-${m}`;
+
+    // Create income transaction
+    const salaryTx = {
+      id: MiPlataDB.generateId('exp-'),
+      type: 'income',
+      amount: obState.salary.amount,
+      categoryId: 'cat-sueldo', // Fallback, will display name if not found
+      categoryName: 'Sueldo',
+      accountId: account.id,
+      note: 'Ingreso inicial',
+      date: obState.salary.date,
+      month: salaryMonth
+    };
+    await MiPlataDB.save('expenses', salaryTx);
+
+    // Create past expenses adjustment if necessary
+    const spent = obState.salary.amount - obState.account.balance;
+    if (spent > 0) {
+      const expenseTx = {
+        id: MiPlataDB.generateId('exp-'),
+        type: 'expense',
+        amount: spent,
+        categoryId: obState.pastExpenseCategory,
+        categoryName: 'Gastos Pasados',
+        accountId: account.id,
+        note: 'Gastos previos al registro',
+        date: obState.salary.date, // Same day as salary to keep it in that month
+        month: salaryMonth
+      };
+      await MiPlataDB.save('expenses', expenseTx);
+    }
+
+    state.accounts = await MiPlataDB.getAll('accounts');
     await loadMonthData();
     showApp();
     showToast('¡Bienvenido a MiPlata! 🎉', 'success');
@@ -131,7 +239,7 @@ const App = (() => {
     // Show/hide FAB
     const fab = document.getElementById('fab-add');
     if (fab) {
-      fab.style.display = (tabName === 'dashboard' || tabName === 'expenses') ? 'flex' : 'none';
+      fab.style.display = (tabName === 'dashboard' || tabName === 'movements') ? 'flex' : 'none';
     }
 
     renderCurrentTab();
@@ -140,8 +248,9 @@ const App = (() => {
   function renderCurrentTab() {
     switch (state.currentTab) {
       case 'dashboard': renderDashboard(); break;
-      case 'expenses': renderExpenses(); break;
-      case 'categories': renderCategories(); break;
+      case 'movements': renderMovements(); break;
+      case 'accounts': renderAccounts(); break;
+      case 'analytics': renderAnalytics(); break;
       case 'settings': renderSettings(); break;
     }
   }
@@ -160,6 +269,7 @@ const App = (() => {
   async function loadMonthData() {
     state.expenses = await MiPlataDB.getByMonth(state.currentMonth);
     state.categories = await MiPlataDB.getAll('categories');
+    state.accounts = await MiPlataDB.getAll('accounts');
     // Sort expenses by date descending
     state.expenses.sort((a, b) => new Date(b.date) - new Date(a.date));
   }
@@ -168,36 +278,35 @@ const App = (() => {
      CALCULATIONS
      ════════════════════════════════════════ */
   function getMonthSummary() {
-    const baseSalary = state.profile?.salary || 0;
-    
-    let extraIncomes = 0;
+    let totalIncome = 0;
     let totalSpent = 0;
 
     state.expenses.forEach(e => {
       const type = e.type || 'expense';
       if (type === 'income') {
-        extraIncomes += e.amount;
-      } else {
+        totalIncome += e.amount;
+      } else if (type === 'expense') {
         totalSpent += e.amount;
       }
     });
 
-    const totalIncome = baseSalary + extraIncomes;
+    const totalAccountBalance = state.accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
 
     const savingsGoal = state.profile?.savingsType === 'percentage'
       ? totalIncome * (state.profile.savingsValue / 100)
       : (state.profile?.savingsValue || 0);
-      
+
     const available = totalIncome - totalSpent;
     const currentSavings = Math.max(available, 0);
 
-    return { salary: totalIncome, totalSpent, savingsGoal, available, currentSavings };
+    return { totalIncome, totalSpent, savingsGoal, available, currentSavings, totalAccountBalance };
   }
 
-  function getCategoryBreakdown() {
+  function getCategoryBreakdown(type = 'expense') {
     const map = {};
     for (const expense of state.expenses) {
-      if ((expense.type || 'expense') === 'income') continue;
+      const expType = expense.type || 'expense';
+      if (expType !== type) continue;
 
       if (!map[expense.category]) {
         const cat = state.categories.find(c => c.id === expense.category);
@@ -220,29 +329,62 @@ const App = (() => {
      RENDER: DASHBOARD
      ════════════════════════════════════════ */
   function renderDashboard() {
-    const { salary, totalSpent, savingsGoal, available, currentSavings } = getMonthSummary();
-    const breakdown = getCategoryBreakdown();
+    const { totalIncome, totalSpent, savingsGoal, available, currentSavings, totalAccountBalance } = getMonthSummary();
 
-    // Balance card
+    // Balance card — show total account balance
     const balanceAmount = document.getElementById('dashboard-balance');
     const incomeValue = document.getElementById('dashboard-income');
     const expenseValue = document.getElementById('dashboard-expenses');
 
-    if (balanceAmount) balanceAmount.textContent = `${formatAmount(available)} Bs`;
-    if (incomeValue) incomeValue.textContent = `${formatAmount(salary)} Bs`;
+    if (balanceAmount) balanceAmount.textContent = `${formatAmount(totalAccountBalance)} Bs`;
+    if (incomeValue) incomeValue.textContent = `${formatAmount(totalIncome)} Bs`;
     if (expenseValue) expenseValue.textContent = `${formatAmount(totalSpent)} Bs`;
+
+    // Account cards
+    renderDashboardAccounts();
 
     // Savings progress
     MiPlataCharts.renderSavingsProgress('savings-progress', currentSavings, savingsGoal);
+
+    // Recent transactions
+    renderRecentExpenses();
+  }
+
+  /* ════════════════════════════════════════
+     RENDER: ANALYTICS
+     ════════════════════════════════════════ */
+  function renderAnalytics() {
+    const { totalSpent } = getMonthSummary();
+    const breakdown = getCategoryBreakdown('expense');
 
     // Donut chart
     MiPlataCharts.renderDonut('chart-donut', breakdown, totalSpent);
 
     // Category bars
     MiPlataCharts.renderCategoryBars('category-bars', breakdown, breakdown[0]?.amount);
+  }
 
-    // Recent expenses
-    renderRecentExpenses();
+  function renderDashboardAccounts() {
+    const container = document.getElementById('dashboard-accounts');
+    if (!container) return;
+
+    if (state.accounts.length === 0) {
+      container.innerHTML = '<div class="expense-empty"><div class="expense-empty-text">No tienes cuentas aún</div></div>';
+      return;
+    }
+
+    container.innerHTML = state.accounts.map(acc => `
+      <div class="account-mini-card" onclick="App.switchTab('accounts')" style="border-left: 3px solid ${acc.color};">
+        <div class="account-mini-icon" style="background: ${MiPlataCharts.hexToRgba(acc.color, 0.15)}">${acc.icon}</div>
+        <div class="account-mini-info">
+          <div class="account-mini-name">${escapeHtml(acc.name)}</div>
+          <div class="account-mini-type">${ACCOUNT_TYPES[acc.type]?.label || acc.type}</div>
+        </div>
+        <div class="account-mini-balance" style="color: ${acc.balance >= 0 ? 'var(--accent-primary)' : 'var(--expense-red)'};">
+          ${formatAmount(acc.balance)} Bs
+        </div>
+      </div>
+    `).join('');
   }
 
   function renderRecentExpenses() {
@@ -256,7 +398,7 @@ const App = (() => {
         <div class="expense-empty">
           <div class="expense-empty-icon">📭</div>
           <div class="expense-empty-text">
-            No hay gastos este mes<br>
+            No hay movimientos este mes<br>
             <span style="color: var(--accent-primary);">Toca + para agregar uno</span>
           </div>
         </div>`;
@@ -267,10 +409,9 @@ const App = (() => {
   }
 
   /* ════════════════════════════════════════
-     RENDER: EXPENSES
+     RENDER: MOVEMENTS (was EXPENSES)
      ════════════════════════════════════════ */
-  function renderExpenses() {
-    // Render filter chips
+  function renderMovements() {
     renderFilterChips();
 
     const container = document.getElementById('expenses-list');
@@ -278,6 +419,13 @@ const App = (() => {
 
     const filterCat = document.querySelector('.filter-chip.active')?.dataset.category;
     let filtered = state.expenses;
+
+    // Apply type filter
+    if (state.movementFilter !== 'all') {
+      filtered = filtered.filter(e => (e.type || 'expense') === state.movementFilter);
+    }
+
+    // Apply category filter
     if (filterCat && filterCat !== 'all') {
       filtered = filtered.filter(e => e.category === filterCat);
     }
@@ -286,7 +434,7 @@ const App = (() => {
       container.innerHTML = `
         <div class="expense-empty">
           <div class="expense-empty-icon">🔍</div>
-          <div class="expense-empty-text">No se encontraron gastos</div>
+          <div class="expense-empty-text">No se encontraron movimientos</div>
         </div>`;
       return;
     }
@@ -303,12 +451,24 @@ const App = (() => {
     for (const [date, expenses] of Object.entries(grouped)) {
       const d = new Date(date + 'T12:00:00');
       const dayLabel = formatDateLabel(d);
-      const dayTotal = expenses.reduce((s, e) => s + e.amount, 0);
+      
+      // Calculate day totals by type
+      const dayIncome = expenses.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+      const dayExpense = expenses.filter(e => (e.type || 'expense') === 'expense').reduce((s, e) => s + e.amount, 0);
+      
+      let dayTotalHTML = '';
+      if (dayIncome > 0 && dayExpense > 0) {
+        dayTotalHTML = `<span style="color:var(--accent-primary);font-size:12px;font-weight:700;">+${formatAmount(dayIncome)}</span> <span style="color:var(--expense-red);font-size:12px;font-weight:700;">-${formatAmount(dayExpense)}</span>`;
+      } else if (dayIncome > 0) {
+        dayTotalHTML = `<span style="color:var(--accent-primary);font-size:12px;font-weight:700;">+${formatAmount(dayIncome)} Bs</span>`;
+      } else {
+        dayTotalHTML = `<span style="color:var(--expense-red);font-size:12px;font-weight:700;">-${formatAmount(dayExpense)} Bs</span>`;
+      }
 
       html += `
         <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
           <span>${dayLabel}</span>
-          <span style="color:var(--accent-danger);font-size:12px;font-weight:700;">-${formatAmount(dayTotal)} Bs</span>
+          <span>${dayTotalHTML}</span>
         </div>`;
 
       html += expenses.map(expense => renderExpenseItem(expense)).join('');
@@ -321,7 +481,7 @@ const App = (() => {
     const container = document.getElementById('expense-filters');
     if (!container) return;
 
-    const cats = getCategoryBreakdown();
+    const cats = getCategoryBreakdown(state.movementFilter === 'all' ? 'expense' : state.movementFilter);
     let html = `<button class="filter-chip active" data-category="all">Todos</button>`;
     html += cats.map(c =>
       `<button class="filter-chip" data-category="${c.id}">${c.icon} ${c.name}</button>`
@@ -334,16 +494,19 @@ const App = (() => {
       chip.addEventListener('click', () => {
         container.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
         chip.classList.add('active');
-        renderExpenses();
+        renderMovements();
       });
     });
   }
 
   function renderExpenseItem(expense) {
     const cat = state.categories.find(c => c.id === expense.category);
+    const acc = state.accounts.find(a => a.id === expense.accountId);
     const icon = cat?.icon || '💰';
     const catName = cat?.name || 'Otros';
     const color = cat?.color || '#6b7280';
+    const accName = acc?.name || '';
+    const accIcon = acc?.icon || '';
     const d = new Date(expense.date);
     const dateStr = `${d.getDate()}/${d.getMonth() + 1}`;
     
@@ -359,6 +522,7 @@ const App = (() => {
         <div class="expense-details">
           <div class="expense-category">${catName}</div>
           ${expense.note ? `<div class="expense-note">${escapeHtml(expense.note)}</div>` : ''}
+          ${accName ? `<div class="expense-account">${accIcon} ${escapeHtml(accName)}</div>` : ''}
         </div>
         <div class="expense-meta">
           <div class="expense-amount" style="color: ${amountColor}">${amountSign}${formatAmount(expense.amount)} Bs</div>
@@ -368,51 +532,83 @@ const App = (() => {
   }
 
   /* ════════════════════════════════════════
-     RENDER: CATEGORIES
+     RENDER: ACCOUNTS
      ════════════════════════════════════════ */
-  function renderCategories() {
-    const container = document.getElementById('categories-list');
-    if (!container) return;
+  function renderAccounts() {
+    const totalContainer = document.getElementById('accounts-total-balance');
+    const listContainer = document.getElementById('accounts-list');
+    if (!listContainer) return;
 
-    let html = state.categories.map(cat => {
-      const monthExpenses = state.expenses.filter(e => e.category === cat.id);
-      const total = monthExpenses.reduce((s, e) => s + e.amount, 0);
+    const totalBalance = state.accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+
+    // Total balance card
+    if (totalContainer) {
+      totalContainer.innerHTML = `
+        <div class="accounts-total-inner">
+          <div class="accounts-total-label">Balance Total</div>
+          <div class="accounts-total-amount" style="color: ${totalBalance >= 0 ? 'var(--accent-primary)' : 'var(--expense-red)'};">
+            ${formatAmount(totalBalance)} Bs
+          </div>
+          <div class="accounts-total-count">${state.accounts.length} cuenta${state.accounts.length !== 1 ? 's' : ''}</div>
+        </div>
+      `;
+    }
+
+    if (state.accounts.length === 0) {
+      listContainer.innerHTML = `
+        <div class="expense-empty">
+          <div class="expense-empty-icon">💳</div>
+          <div class="expense-empty-text">
+            No tienes cuentas aún<br>
+            <span style="color: var(--accent-primary);">Crea una para empezar</span>
+          </div>
+        </div>`;
+      return;
+    }
+
+    listContainer.innerHTML = state.accounts.map(acc => {
+      // Count this month's transactions for this account
+      const accExpenses = state.expenses.filter(e => e.accountId === acc.id);
+      const accIncome = accExpenses.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+      const accSpent = accExpenses.filter(e => (e.type || 'expense') === 'expense').reduce((s, e) => s + e.amount, 0);
+      const typeInfo = ACCOUNT_TYPES[acc.type] || ACCOUNT_TYPES.other;
 
       return `
-        <div class="category-card" onclick="App.showCategoryEdit('${cat.id}')">
-          <div class="category-icon-wrapper" style="background: ${MiPlataCharts.hexToRgba(cat.color, 0.15)}">
-            ${cat.icon}
+        <div class="account-card" onclick="App.showAccountEdit('${acc.id}')" style="border-left: 4px solid ${acc.color};">
+          <div class="account-card-header">
+            <div class="account-card-icon" style="background: ${MiPlataCharts.hexToRgba(acc.color, 0.15)}">${acc.icon}</div>
+            <div class="account-card-info">
+              <div class="account-card-name">${escapeHtml(acc.name)}</div>
+              <div class="account-card-type">${typeInfo.label}</div>
+            </div>
+            <div class="account-card-balance" style="color: ${acc.balance >= 0 ? 'var(--accent-primary)' : 'var(--expense-red)'};">
+              ${formatAmount(acc.balance)} Bs
+            </div>
           </div>
-          <div class="category-info">
-            <div class="category-name">${escapeHtml(cat.name)}</div>
-            <div class="category-description">${escapeHtml(cat.description || '')}</div>
+          <div class="account-card-stats">
+            <div class="account-stat">
+              <span class="account-stat-label">Ingresos</span>
+              <span class="account-stat-value income">+${formatAmount(accIncome)}</span>
+            </div>
+            <div class="account-stat">
+              <span class="account-stat-label">Gastos</span>
+              <span class="account-stat-value expense">-${formatAmount(accSpent)}</span>
+            </div>
+            <div class="account-stat">
+              <span class="account-stat-label">Movimientos</span>
+              <span class="account-stat-value">${accExpenses.length}</span>
+            </div>
           </div>
-          <div style="text-align:right;">
-            <div style="font-size:13px;font-weight:700;color:var(--text-secondary);">${formatAmount(total)} Bs</div>
-            <div style="font-size:11px;color:var(--text-muted);">${monthExpenses.length} gastos</div>
-          </div>
-          <span class="category-arrow">›</span>
         </div>`;
     }).join('');
-
-    html += `
-      <button class="add-category-btn" onclick="App.showCategoryModal()">
-        <span>＋</span> Nueva Categoría
-      </button>`;
-
-    container.innerHTML = html;
   }
 
   /* ════════════════════════════════════════
      RENDER: SETTINGS
      ════════════════════════════════════════ */
   function renderSettings() {
-    const salaryEl = document.getElementById('settings-salary-value');
     const savingsEl = document.getElementById('settings-savings-value');
 
-    if (salaryEl && state.profile) {
-      salaryEl.textContent = `${formatAmount(state.profile.salary)} Bs`;
-    }
     if (savingsEl && state.profile) {
       const val = state.profile.savingsType === 'percentage'
         ? `${state.profile.savingsValue}%`
@@ -446,11 +642,13 @@ const App = (() => {
         if (btn.dataset.type === type) btn.classList.add('active');
         else btn.classList.remove('active');
       });
+
+      renderAccountSelector(expense.accountId);
       renderCategorySelector(type);
 
       // Select category
       setTimeout(() => {
-        document.querySelectorAll('.category-option').forEach(opt => {
+        document.querySelectorAll('#category-selector .category-option').forEach(opt => {
           opt.classList.toggle('selected', opt.dataset.id === expense.category);
         });
       }, 50);
@@ -465,10 +663,37 @@ const App = (() => {
         if (btn.dataset.type === 'expense') btn.classList.add('active');
         else btn.classList.remove('active');
       });
+
+      renderAccountSelector();
       renderCategorySelector('expense');
     }
 
     openModal('modal-expense');
+  }
+
+  function renderAccountSelector(selectedId = null) {
+    const container = document.getElementById('account-selector');
+    if (!container) return;
+
+    container.innerHTML = state.accounts.map(acc => `
+      <div class="account-option ${selectedId === acc.id ? 'selected' : ''}" data-id="${acc.id}" onclick="App.selectAccount(this)">
+        <span class="account-option-icon" style="background: ${MiPlataCharts.hexToRgba(acc.color, 0.15)}">${acc.icon}</span>
+        <span class="account-option-name">${acc.name}</span>
+        <span class="account-option-balance">${formatAmount(acc.balance)} Bs</span>
+      </div>
+    `).join('');
+
+    // Auto-select first if none selected
+    if (!selectedId && state.accounts.length > 0) {
+      const first = container.querySelector('.account-option');
+      if (first) first.classList.add('selected');
+    }
+  }
+
+  function selectAccount(el) {
+    const container = el.closest('.account-selector');
+    container.querySelectorAll('.account-option').forEach(opt => opt.classList.remove('selected'));
+    el.classList.add('selected');
   }
 
   function renderCategorySelector(type = 'expense') {
@@ -486,7 +711,7 @@ const App = (() => {
   }
 
   function selectCategory(el) {
-    document.querySelectorAll('.category-option').forEach(opt => opt.classList.remove('selected'));
+    document.querySelectorAll('#category-selector .category-option').forEach(opt => opt.classList.remove('selected'));
     el.classList.add('selected');
   }
 
@@ -494,10 +719,16 @@ const App = (() => {
     const amount = parseFloat(document.getElementById('input-amount').value);
     const note = document.getElementById('input-note').value.trim();
     const date = document.getElementById('input-date').value;
-    const selectedCat = document.querySelector('.category-option.selected');
+    const selectedCat = document.querySelector('#category-selector .category-option.selected');
+    const selectedAcc = document.querySelector('#account-selector .account-option.selected');
 
     if (!amount || amount <= 0) {
       showToast('Ingresa un monto válido', 'error');
+      return;
+    }
+
+    if (!selectedAcc) {
+      showToast('Selecciona una cuenta', 'error');
       return;
     }
 
@@ -512,17 +743,35 @@ const App = (() => {
     }
 
     const categoryId = selectedCat.dataset.id;
+    const accountId = selectedAcc.dataset.id;
     const [y, m] = date.split('-');
     const month = `${y}-${m}`;
 
     const typeBtn = document.querySelector('#transaction-type-selector .type-btn.active');
     const type = typeBtn ? typeBtn.dataset.type : 'expense';
 
+    // If editing, reverse the old transaction's effect on account balance
+    if (state.editingExpense) {
+      const oldExpense = state.expenses.find(e => e.id === state.editingExpense);
+      if (oldExpense) {
+        const oldAccount = await MiPlataDB.get('accounts', oldExpense.accountId);
+        if (oldAccount) {
+          if ((oldExpense.type || 'expense') === 'expense') {
+            oldAccount.balance += oldExpense.amount; // reverse deduction
+          } else {
+            oldAccount.balance -= oldExpense.amount; // reverse addition
+          }
+          await MiPlataDB.save('accounts', oldAccount);
+        }
+      }
+    }
+
     const expense = {
       id: state.editingExpense || MiPlataDB.generateId('exp-'),
       type,
       amount,
       category: categoryId,
+      accountId,
       note,
       date: `${date}T${new Date().toTimeString().slice(0, 8)}`,
       month,
@@ -533,6 +782,18 @@ const App = (() => {
     };
 
     await MiPlataDB.save('expenses', expense);
+
+    // Update account balance
+    const account = await MiPlataDB.get('accounts', accountId);
+    if (account) {
+      if (type === 'expense') {
+        account.balance -= amount;
+      } else {
+        account.balance += amount;
+      }
+      await MiPlataDB.save('accounts', account);
+    }
+
     closeModal('modal-expense');
     await loadMonthData();
     renderCurrentTab();
@@ -555,21 +816,27 @@ const App = (() => {
     if (!expense) return;
 
     const cat = state.categories.find(c => c.id === expense.category);
+    const acc = state.accounts.find(a => a.id === expense.accountId);
+    const type = expense.type || 'expense';
+    const typeLabel = type === 'income' ? 'ingreso' : 'gasto';
     const actionContent = document.getElementById('action-sheet-content');
 
     actionContent.innerHTML = `
       <div style="text-align:center;margin-bottom:16px;">
         <div style="font-size:32px;margin-bottom:8px;">${cat?.icon || '💰'}</div>
-        <div style="font-size:18px;font-weight:700;">${formatAmount(expense.amount)} Bs</div>
+        <div style="font-size:18px;font-weight:700;color:${type === 'income' ? 'var(--accent-primary)' : 'var(--expense-red)'};">
+          ${type === 'income' ? '+' : '-'}${formatAmount(expense.amount)} Bs
+        </div>
         <div style="font-size:13px;color:var(--text-muted);">${cat?.name || 'Otros'}${expense.note ? ' · ' + expense.note : ''}</div>
+        ${acc ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${acc.icon} ${acc.name}</div>` : ''}
       </div>
       <div class="action-sheet">
         <button class="action-sheet-item" onclick="App.showExpenseModal('${expenseId}'); App.closeModal('modal-actions');">
-          ✏️ Editar gasto
+          ✏️ Editar ${typeLabel}
         </button>
         <div class="action-sheet-divider"></div>
         <button class="action-sheet-item danger" onclick="App.confirmDeleteExpense('${expenseId}')">
-          🗑️ Eliminar gasto
+          🗑️ Eliminar ${typeLabel}
         </button>
       </div>`;
 
@@ -582,7 +849,7 @@ const App = (() => {
     confirmContent.innerHTML = `
       <div class="confirm-body">
         <div class="confirm-icon">🗑️</div>
-        <div class="confirm-text">¿Estás seguro de que quieres eliminar este gasto? Esta acción no se puede deshacer.</div>
+        <div class="confirm-text">¿Estás seguro de que quieres eliminar este registro? Esta acción no se puede deshacer.</div>
       </div>
       <div class="modal-actions">
         <button class="btn-secondary" onclick="App.closeModal('modal-confirm')">Cancelar</button>
@@ -592,16 +859,304 @@ const App = (() => {
   }
 
   async function deleteExpense(expenseId) {
+    // Reverse balance impact
+    const expense = state.expenses.find(e => e.id === expenseId);
+    if (expense) {
+      const account = await MiPlataDB.get('accounts', expense.accountId);
+      if (account) {
+        if ((expense.type || 'expense') === 'expense') {
+          account.balance += expense.amount; // reverse deduction
+        } else {
+          account.balance -= expense.amount; // reverse addition
+        }
+        await MiPlataDB.save('accounts', account);
+      }
+    }
+
     await MiPlataDB.remove('expenses', expenseId);
     closeModal('modal-confirm');
     await loadMonthData();
     renderCurrentTab();
-    showToast('Gasto eliminado', 'info');
+    showToast('Registro eliminado', 'info');
+  }
+
+  /* ════════════════════════════════════════
+     ACCOUNT CRUD
+     ════════════════════════════════════════ */
+  function showAccountModal(editId = null) {
+    state.editingAccount = editId;
+    const title = document.getElementById('modal-account-title');
+    const nameInput = document.getElementById('input-acc-name');
+    const iconInput = document.getElementById('input-acc-icon');
+    const colorInput = document.getElementById('input-acc-color');
+    const balanceInput = document.getElementById('input-acc-balance');
+    const balanceGroup = document.getElementById('account-balance-group');
+    const deleteBtn = document.getElementById('btn-delete-account');
+    const typeBtns = document.querySelectorAll('#account-type-selector .acc-type-btn');
+
+    if (editId) {
+      const acc = state.accounts.find(a => a.id === editId);
+      if (!acc) return;
+
+      title.textContent = 'Editar Cuenta';
+      nameInput.value = acc.name;
+      iconInput.value = acc.icon;
+      colorInput.value = acc.color;
+      balanceInput.value = acc.balance;
+      deleteBtn.classList.remove('hidden');
+
+      // Hide balance group label change for edit
+      const balLabel = balanceGroup.querySelector('.form-label');
+      if (balLabel) balLabel.textContent = 'Balance Actual (Bs)';
+
+      typeBtns.forEach(btn => {
+        if (btn.dataset.type === acc.type) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+    } else {
+      title.textContent = 'Nueva Cuenta';
+      nameInput.value = '';
+      iconInput.value = '💳';
+      colorInput.value = '#10b981';
+      balanceInput.value = '';
+      deleteBtn.classList.add('hidden');
+
+      const balLabel = balanceGroup.querySelector('.form-label');
+      if (balLabel) balLabel.textContent = 'Balance Inicial (Bs)';
+
+      typeBtns.forEach(btn => {
+        if (btn.dataset.type === 'wallet') btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+    }
+
+    openModal('modal-account');
+  }
+
+  function showAccountEdit(accId) {
+    showAccountModal(accId);
+  }
+
+  async function saveAccount() {
+    const name = document.getElementById('input-acc-name').value.trim();
+    const icon = document.getElementById('input-acc-icon').value.trim();
+    const color = document.getElementById('input-acc-color').value;
+    const balance = parseFloat(document.getElementById('input-acc-balance').value) || 0;
+    const typeBtn = document.querySelector('#account-type-selector .acc-type-btn.active');
+    const type = typeBtn ? typeBtn.dataset.type : 'wallet';
+
+    if (!name) {
+      showToast('Ingresa un nombre', 'error');
+      return;
+    }
+
+    const account = {
+      id: state.editingAccount || MiPlataDB.generateId('acc-'),
+      name,
+      icon: icon || '💳',
+      color,
+      type,
+      balance,
+      createdAt: state.editingAccount
+        ? (state.accounts.find(a => a.id === state.editingAccount)?.createdAt || new Date().toISOString())
+        : new Date().toISOString()
+    };
+
+    await MiPlataDB.save('accounts', account);
+    closeModal('modal-account');
+    state.accounts = await MiPlataDB.getAll('accounts');
+    renderCurrentTab();
+    showToast(state.editingAccount ? 'Cuenta actualizada' : 'Cuenta creada ✨', 'success');
+    state.editingAccount = null;
+  }
+
+  async function deleteAccount() {
+    if (!state.editingAccount) return;
+
+    // Check if account has expenses
+    const expenses = state.expenses.filter(e => e.accountId === state.editingAccount);
+    if (expenses.length > 0) {
+      showToast(`No se puede eliminar: tiene ${expenses.length} movimiento(s)`, 'error');
+      return;
+    }
+
+    // Also check all months
+    const allExpenses = await MiPlataDB.getAll('expenses');
+    const linkedExpenses = allExpenses.filter(e => e.accountId === state.editingAccount);
+    if (linkedExpenses.length > 0) {
+      showToast(`No se puede eliminar: tiene ${linkedExpenses.length} movimiento(s) asociado(s)`, 'error');
+      return;
+    }
+
+    await MiPlataDB.remove('accounts', state.editingAccount);
+    closeModal('modal-account');
+    state.accounts = await MiPlataDB.getAll('accounts');
+    renderCurrentTab();
+    showToast('Cuenta eliminada', 'info');
+    state.editingAccount = null;
+  }
+
+  /* ════════════════════════════════════════
+     TRANSFERS
+     ════════════════════════════════════════ */
+  function showTransferModal() {
+    if (state.accounts.length < 2) {
+      showToast('Necesitas al menos 2 cuentas para transferir', 'error');
+      return;
+    }
+
+    renderTransferSelectors();
+    document.getElementById('input-transfer-amount').value = '';
+    document.getElementById('input-transfer-note').value = '';
+    openModal('modal-transfer');
+  }
+
+  function renderTransferSelectors() {
+    const fromContainer = document.getElementById('transfer-from-selector');
+    const toContainer = document.getElementById('transfer-to-selector');
+    if (!fromContainer || !toContainer) return;
+
+    const renderSelector = (container, selectedIdx) => {
+      container.innerHTML = state.accounts.map((acc, i) => `
+        <div class="account-option ${i === selectedIdx ? 'selected' : ''}" data-id="${acc.id}" onclick="App.selectAccount(this)">
+          <span class="account-option-icon" style="background: ${MiPlataCharts.hexToRgba(acc.color, 0.15)}">${acc.icon}</span>
+          <span class="account-option-name">${acc.name}</span>
+          <span class="account-option-balance">${formatAmount(acc.balance)} Bs</span>
+        </div>
+      `).join('');
+    };
+
+    renderSelector(fromContainer, 0);
+    renderSelector(toContainer, state.accounts.length > 1 ? 1 : 0);
+  }
+
+  async function saveTransfer() {
+    const fromEl = document.querySelector('#transfer-from-selector .account-option.selected');
+    const toEl = document.querySelector('#transfer-to-selector .account-option.selected');
+    const amount = parseFloat(document.getElementById('input-transfer-amount').value);
+    const note = document.getElementById('input-transfer-note').value.trim();
+
+    if (!fromEl || !toEl) {
+      showToast('Selecciona ambas cuentas', 'error');
+      return;
+    }
+
+    if (fromEl.dataset.id === toEl.dataset.id) {
+      showToast('Selecciona cuentas diferentes', 'error');
+      return;
+    }
+
+    if (!amount || amount <= 0) {
+      showToast('Ingresa un monto válido', 'error');
+      return;
+    }
+
+    const fromId = fromEl.dataset.id;
+    const toId = toEl.dataset.id;
+
+    // Update balances
+    const fromAcc = await MiPlataDB.get('accounts', fromId);
+    const toAcc = await MiPlataDB.get('accounts', toId);
+
+    if (!fromAcc || !toAcc) {
+      showToast('Error: cuenta no encontrada', 'error');
+      return;
+    }
+
+    fromAcc.balance -= amount;
+    toAcc.balance += amount;
+
+    await MiPlataDB.save('accounts', fromAcc);
+    await MiPlataDB.save('accounts', toAcc);
+
+    // Record transfer as two linked transactions
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const [y, m] = dateStr.split('-');
+    const month = `${y}-${m}`;
+    const transferId = MiPlataDB.generateId('trf-');
+    const transferNote = note || `Transferencia: ${fromAcc.name} → ${toAcc.name}`;
+
+    // Expense from source
+    await MiPlataDB.save('expenses', {
+      id: MiPlataDB.generateId('exp-'),
+      type: 'expense',
+      amount,
+      category: 'cat-otros',
+      accountId: fromId,
+      note: `🔄 ${transferNote}`,
+      date: `${dateStr}T${now.toTimeString().slice(0, 8)}`,
+      month,
+      transferId,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    });
+
+    // Income to destination
+    await MiPlataDB.save('expenses', {
+      id: MiPlataDB.generateId('exp-'),
+      type: 'income',
+      amount,
+      category: 'cat-otros-ingresos',
+      accountId: toId,
+      note: `🔄 ${transferNote}`,
+      date: `${dateStr}T${now.toTimeString().slice(0, 8)}`,
+      month,
+      transferId,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    });
+
+    closeModal('modal-transfer');
+    await loadMonthData();
+    renderCurrentTab();
+    showToast(`🔄 Transferencia: ${formatAmount(amount)} Bs`, 'success');
   }
 
   /* ════════════════════════════════════════
      CATEGORY CRUD
      ════════════════════════════════════════ */
+  function showCategoriesManager() {
+    renderCategoriesManagerList('expense');
+    openModal('modal-categories-manager');
+  }
+
+  function renderCategoriesManagerList(type = 'expense') {
+    const container = document.getElementById('categories-manager-list');
+    if (!container) return;
+
+    const filteredCats = state.categories.filter(c => (c.type || 'expense') === type);
+
+    if (filteredCats.length === 0) {
+      container.innerHTML = `
+        <div class="expense-empty" style="padding: 24px 0;">
+          <div class="expense-empty-text">No hay categorías de ${type === 'expense' ? 'gastos' : 'ingresos'}</div>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = filteredCats.map(cat => {
+      const monthExpenses = state.expenses.filter(e => e.category === cat.id);
+      const total = monthExpenses.reduce((s, e) => s + e.amount, 0);
+
+      return `
+        <div class="category-card" onclick="App.showCategoryEdit('${cat.id}')">
+          <div class="category-icon-wrapper" style="background: ${MiPlataCharts.hexToRgba(cat.color, 0.15)}">
+            ${cat.icon}
+          </div>
+          <div class="category-info">
+            <div class="category-name">${escapeHtml(cat.name)}</div>
+            <div class="category-description">${escapeHtml(cat.description || '')}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;color:var(--text-secondary);">${formatAmount(total)} Bs</div>
+            <div style="font-size:11px;color:var(--text-muted);">${monthExpenses.length} registros</div>
+          </div>
+          <span class="category-arrow">›</span>
+        </div>`;
+    }).join('');
+  }
+
   function showCategoryModal(editId = null) {
     state.editingCategory = editId;
     const title = document.getElementById('modal-category-title');
@@ -642,6 +1197,7 @@ const App = (() => {
       });
     }
 
+    closeModal('modal-categories-manager');
     openModal('modal-category');
   }
 
@@ -682,10 +1238,11 @@ const App = (() => {
   async function deleteCategory() {
     if (!state.editingCategory) return;
 
-    // Check if category has expenses
-    const expenses = state.expenses.filter(e => e.category === state.editingCategory);
-    if (expenses.length > 0) {
-      showToast(`No se puede eliminar: tiene ${expenses.length} gasto(s)`, 'error');
+    // Check if category has expenses across all months
+    const allExpenses = await MiPlataDB.getAll('expenses');
+    const linkedExpenses = allExpenses.filter(e => e.category === state.editingCategory);
+    if (linkedExpenses.length > 0) {
+      showToast(`No se puede eliminar: tiene ${linkedExpenses.length} registro(s)`, 'error');
       return;
     }
 
@@ -783,37 +1340,6 @@ const App = (() => {
   /* ════════════════════════════════════════
      SETTINGS
      ════════════════════════════════════════ */
-  function showEditSalary() {
-    const content = document.getElementById('confirm-content');
-    content.innerHTML = `
-      <div style="text-align:center;margin-bottom:16px;">
-        <div style="font-size:32px;margin-bottom:8px;">💰</div>
-        <div style="font-size:16px;font-weight:600;">Editar Sueldo Mensual</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Sueldo (Bs)</label>
-        <input type="number" class="form-input" id="edit-salary-input" value="${state.profile?.salary || ''}" placeholder="0.00" inputmode="decimal">
-      </div>
-      <div class="modal-actions">
-        <button class="btn-secondary" onclick="App.closeModal('modal-confirm')">Cancelar</button>
-        <button class="btn-primary" onclick="App.updateSalary()">Guardar</button>
-      </div>`;
-    openModal('modal-confirm');
-  }
-
-  async function updateSalary() {
-    const salary = parseFloat(document.getElementById('edit-salary-input').value);
-    if (!salary || salary <= 0) {
-      showToast('Ingresa un sueldo válido', 'error');
-      return;
-    }
-    state.profile.salary = salary;
-    await MiPlataDB.save('profile', state.profile);
-    closeModal('modal-confirm');
-    renderCurrentTab();
-    showToast('Sueldo actualizado', 'success');
-  }
-
   function showEditSavings() {
     const content = document.getElementById('confirm-content');
     content.innerHTML = `
@@ -897,7 +1423,7 @@ const App = (() => {
 
         // Show confirmation
         const content = document.getElementById('confirm-content');
-        const stats = `${data.expenses?.length || 0} gastos, ${data.categories?.length || 0} categorías`;
+        const stats = `${data.expenses?.length || 0} movimientos, ${data.categories?.length || 0} categorías, ${data.accounts?.length || 0} cuentas`;
         content.innerHTML = `
           <div class="confirm-body">
             <div class="confirm-icon">📥</div>
@@ -963,10 +1489,12 @@ const App = (() => {
     await MiPlataDB.clear('profile');
     await MiPlataDB.clear('expenses');
     await MiPlataDB.clear('categories');
+    await MiPlataDB.clear('accounts');
     await MiPlataDB.init(); // Re-seed defaults
     state.profile = null;
     state.expenses = [];
     state.categories = await MiPlataDB.getAll('categories');
+    state.accounts = await MiPlataDB.getAll('accounts');
     closeModal('modal-confirm');
     showOnboarding();
     showToast('Datos eliminados', 'info');
@@ -1056,9 +1584,18 @@ const App = (() => {
 
     // Onboarding steps
     document.getElementById('btn-onboarding-start')?.addEventListener('click', () => showOnboardingStep(2));
-    document.getElementById('btn-onboarding-next')?.addEventListener('click', () => showOnboardingStep(3));
+    document.getElementById('btn-onboarding-next')?.addEventListener('click', () => {
+      // Validate at least one account with name
+      const validAccounts = onboardingAccounts.filter(a => a.name.trim());
+      if (validAccounts.length === 0) {
+        showToast('Agrega al menos una cuenta con nombre', 'error');
+        return;
+      }
+      showOnboardingStep(3);
+    });
     document.getElementById('btn-onboarding-back')?.addEventListener('click', () => showOnboardingStep(2));
     document.getElementById('btn-onboarding-done')?.addEventListener('click', () => completeOnboarding());
+    document.getElementById('btn-onboarding-add-account')?.addEventListener('click', () => addOnboardingAccount());
 
     // Savings type toggle in onboarding
     document.querySelectorAll('#onboarding .savings-type-btn').forEach(btn => {
@@ -1071,17 +1608,53 @@ const App = (() => {
     });
 
     // Transaction Type Toggles
-    document.querySelectorAll('.transaction-type-selector .type-btn').forEach(btn => {
+    document.querySelectorAll('#transaction-type-selector .type-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const selector = e.target.closest('.transaction-type-selector');
         selector.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
 
-        // Only re-render if it's the expense modal selector
+        // Re-render categories for the selected type
         if (selector.id === 'transaction-type-selector') {
-          // Re-render categories for the selected type
           App.renderCategorySelector(e.target.dataset.type);
         }
+      });
+    });
+
+    // Category Type Toggles
+    document.querySelectorAll('#category-type-selector .type-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const selector = e.target.closest('.transaction-type-selector');
+        selector.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+      });
+    });
+
+    // Categories Manager Type Toggle
+    document.querySelectorAll('#categories-manager-type-selector .type-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const selector = e.target.closest('.transaction-type-selector');
+        selector.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        renderCategoriesManagerList(e.target.dataset.type);
+      });
+    });
+
+    // Movement type filter
+    document.querySelectorAll('.type-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.type-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.movementFilter = btn.dataset.filter;
+        renderMovements();
+      });
+    });
+
+    // Account type selector
+    document.querySelectorAll('#account-type-selector .acc-type-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#account-type-selector .acc-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
       });
     });
 
@@ -1096,6 +1669,13 @@ const App = (() => {
     document.getElementById('btn-save-category')?.addEventListener('click', () => saveCategory());
     document.getElementById('btn-delete-category')?.addEventListener('click', () => deleteCategory());
 
+    // Account modal
+    document.getElementById('btn-save-account')?.addEventListener('click', () => saveAccount());
+    document.getElementById('btn-delete-account')?.addEventListener('click', () => deleteAccount());
+
+    // Transfer modal
+    document.getElementById('btn-save-transfer')?.addEventListener('click', () => saveTransfer());
+
     // OCR
     document.getElementById('ocr-upload-area')?.addEventListener('click', () => {
       document.getElementById('ocr-file-input')?.click();
@@ -1106,7 +1686,6 @@ const App = (() => {
     document.getElementById('btn-ocr-confirm')?.addEventListener('click', () => confirmOCRAmount());
 
     // Settings
-    document.getElementById('btn-edit-salary')?.addEventListener('click', () => showEditSalary());
     document.getElementById('btn-edit-savings')?.addEventListener('click', () => showEditSavings());
     document.getElementById('btn-export')?.addEventListener('click', () => exportData());
     document.getElementById('btn-import')?.addEventListener('click', () => importData());
@@ -1149,14 +1728,20 @@ const App = (() => {
     confirmDeleteExpense,
     deleteExpense,
     selectCategory,
+    selectAccount,
     showCategoryModal,
     showCategoryEdit,
     saveCategory,
     deleteCategory,
+    showCategoriesManager,
+    showAccountModal,
+    showAccountEdit,
+    saveAccount,
+    deleteAccount,
+    showTransferModal,
+    saveTransfer,
     showOCRModal,
     confirmOCRAmount,
-    showEditSalary,
-    updateSalary,
     showEditSavings,
     updateSavings,
     toggleSavingsType,
@@ -1167,7 +1752,10 @@ const App = (() => {
     confirmClearAll,
     openModal,
     closeModal,
-    changeMonth
+    changeMonth,
+    updateOnboardingAccount,
+    removeOnboardingAccount,
+    addOnboardingAccount
   };
 })();
 
