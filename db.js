@@ -10,28 +10,28 @@ const MiPlataDB = (() => {
   /* ── Default categories ── */
   const DEFAULT_CATEGORIES = [
     // Gastos
-    { id: 'cat-comida',          name: 'Comida',          icon: '🍔', color: '#f97316', description: 'Alimentación y mercado', type: 'expense' },
-    { id: 'cat-transporte',      name: 'Transporte',      icon: '🚌', color: '#3b82f6', description: 'Pasajes, gasolina', type: 'expense' },
-    { id: 'cat-vivienda',        name: 'Vivienda',        icon: '🏠', color: '#8b5cf6', description: 'Alquiler, servicios', type: 'expense' },
-    { id: 'cat-salud',           name: 'Salud',           icon: '💊', color: '#ef4444', description: 'Medicinas, consultas', type: 'expense' },
+    { id: 'cat-comida', name: 'Comida', icon: '🍔', color: '#f97316', description: 'Alimentación y mercado', type: 'expense' },
+    { id: 'cat-transporte', name: 'Transporte', icon: '🚌', color: '#3b82f6', description: 'Pasajes, gasolina', type: 'expense' },
+    { id: 'cat-vivienda', name: 'Vivienda', icon: '🏠', color: '#8b5cf6', description: 'Alquiler, servicios', type: 'expense' },
+    { id: 'cat-salud', name: 'Salud', icon: '💊', color: '#ef4444', description: 'Medicinas, consultas', type: 'expense' },
     { id: 'cat-entretenimiento', name: 'Entretenimiento', icon: '🎮', color: '#ec4899', description: 'Ocio, suscripciones', type: 'expense' },
-    { id: 'cat-servicios',       name: 'Servicios',       icon: '📱', color: '#06b6d4', description: 'Internet, teléfono', type: 'expense' },
-    { id: 'cat-ropa',            name: 'Ropa',            icon: '👕', color: '#f59e0b', description: 'Vestimenta', type: 'expense' },
-    { id: 'cat-educacion',       name: 'Educación',       icon: '📚', color: '#10b981', description: 'Cursos, materiales', type: 'expense' },
-    { id: 'cat-otros',           name: 'Otros',           icon: '🛍️', color: '#6b7280', description: 'Gasto sin categoría', type: 'expense' },
-    
+    { id: 'cat-servicios', name: 'Servicios', icon: '📱', color: '#06b6d4', description: 'Internet, teléfono', type: 'expense' },
+    { id: 'cat-ropa', name: 'Ropa', icon: '👕', color: '#f59e0b', description: 'Vestimenta', type: 'expense' },
+    { id: 'cat-educacion', name: 'Educación', icon: '📚', color: '#10b981', description: 'Cursos, materiales', type: 'expense' },
+    { id: 'cat-otros', name: 'Otros', icon: '🛍️', color: '#6b7280', description: 'Gasto sin categoría', type: 'expense' },
+
     // Ingresos
-    { id: 'cat-sueldo',          name: 'Sueldo',          icon: '💰', color: '#10b981', description: 'Ingreso principal', type: 'income' },
-    { id: 'cat-ventas',          name: 'Ventas',          icon: '🏷️', color: '#8b5cf6', description: 'Venta de artículos', type: 'income' },
-    { id: 'cat-freelance',       name: 'Freelance',       icon: '💻', color: '#3b82f6', description: 'Trabajos independientes', type: 'income' },
-    { id: 'cat-regalo',          name: 'Regalo',          icon: '🎁', color: '#ec4899', description: 'Dinero regalado', type: 'income' },
-    { id: 'cat-otros-ingresos',  name: 'Otros Ingresos',  icon: '💵', color: '#06b6d4', description: 'Ingreso extra', type: 'income' }
+    { id: 'cat-sueldo', name: 'Sueldo', icon: '💰', color: '#10b981', description: 'Ingreso principal', type: 'income' },
+    { id: 'cat-ventas', name: 'Ventas', icon: '🏷️', color: '#8b5cf6', description: 'Venta de artículos', type: 'income' },
+    { id: 'cat-freelance', name: 'Freelance', icon: '💻', color: '#3b82f6', description: 'Trabajos independientes', type: 'income' },
+    { id: 'cat-regalo', name: 'Regalo', icon: '🎁', color: '#ec4899', description: 'Dinero regalado', type: 'income' },
+    { id: 'cat-otros-ingresos', name: 'Otros Ingresos', icon: '💵', color: '#06b6d4', description: 'Ingreso extra', type: 'income' }
   ];
 
   /* ── Default accounts ── */
   const DEFAULT_ACCOUNTS = [
-    { id: 'acc-monedero', name: 'Monedero',  icon: '💳', color: '#10b981', type: 'wallet',  balance: 0, createdAt: new Date().toISOString() },
-    { id: 'acc-banco',    name: 'Banco',     icon: '🏦', color: '#3b82f6', type: 'bank',    balance: 0, createdAt: new Date().toISOString() }
+    { id: 'acc-monedero', name: 'Monedero', icon: '💳', color: '#10b981', type: 'wallet', balance: 0, createdAt: new Date().toISOString() },
+    { id: 'acc-banco', name: 'Banco', icon: '🏦', color: '#3b82f6', type: 'bank', balance: 0, createdAt: new Date().toISOString() }
   ];
 
   /* ── Open / upgrade DB ── */
@@ -119,13 +119,13 @@ const MiPlataDB = (() => {
   async function migrateExpensesToAccounts() {
     const expenses = await getAll('expenses');
     const needsMigration = expenses.filter(e => !e.accountId);
-    
+
     if (needsMigration.length === 0) return;
 
     // Get or create a "General" account for legacy data
     const accounts = await getAll('accounts');
     let defaultAccount = accounts.find(a => a.id === 'acc-monedero') || accounts[0];
-    
+
     if (!defaultAccount) {
       defaultAccount = {
         id: 'acc-general',

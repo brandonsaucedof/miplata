@@ -60,69 +60,253 @@ const App = (() => {
   }
 
   /* ════════════════════════════════════════
-     ONBOARDING WIZARD
+     ONBOARDING WIZARD (V3)
      ════════════════════════════════════════ */
   let obState = {
-    account: { name: 'Efectivo', type: 'cash', balance: 0 },
-    salary: { amount: 0, date: '' },
-    pastExpenseCategory: 'cat-general'
+    accounts: [],
+    categories: [],
+    salary: { amount: 0, date: '', accountId: '' },
+    pastExpenses: [],
+    hasSpent: false
   };
+
+  const OB_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#f97316'];
+  const OB_ACCOUNT_ICONS = { cash: '💵', bank: '🏦', wallet: '💳', savings: '💰' };
+  const OB_CATEGORY_ICONS = ['🍔', '🚌', '🏠', '🎮', '🛒', '💼', '💻', '🎁', '📝', '🏥', '✈️', '🐶'];
 
   function showOnboarding() {
     document.getElementById('onboarding').classList.remove('hidden');
     document.getElementById('app').classList.add('hidden');
+
+    // Initialize default if empty
+    if (obState.accounts.length === 0) {
+      obState.accounts.push({ id: MiPlataDB.generateId('acc-'), name: 'Efectivo', type: 'cash', color: OB_COLORS[0], balance: 0 });
+    }
+    if (obState.categories.length === 0) {
+      obState.categories.push({ id: MiPlataDB.generateId('cat-'), name: 'Sueldo', icon: '💼', color: OB_COLORS[0], type: 'income' });
+      obState.categories.push({ id: MiPlataDB.generateId('cat-'), name: 'Comida', icon: '🍔', color: OB_COLORS[3], type: 'expense' });
+    }
+
     showOnboardingStep(1);
 
     // Bind step navigation
     document.getElementById('btn-onboarding-start')?.addEventListener('click', () => showOnboardingStep(2));
-    
+
     document.getElementById('btn-onboarding-step2-next')?.addEventListener('click', () => {
-      obState.account.name = document.getElementById('ob-account-name').value.trim() || 'Principal';
-      obState.account.type = document.querySelector('.acc-type-btn.active')?.dataset.type || 'cash';
-      obState.account.balance = parseFloat(document.getElementById('ob-account-balance').value) || 0;
+      // Validate at least one account
+      const validAccounts = obState.accounts.filter(a => a.name.trim());
+      if (validAccounts.length === 0) {
+        showToast('Agrega al menos una cuenta con nombre', 'error');
+        return;
+      }
       showOnboardingStep(3);
     });
 
     document.getElementById('btn-onboarding-step3-next')?.addEventListener('click', () => {
-      obState.salary.amount = parseFloat(document.getElementById('ob-salary-amount').value) || 0;
-      obState.salary.date = document.getElementById('ob-salary-date').value;
-      if (!obState.salary.amount || !obState.salary.date) {
-        showToast('Por favor, ingresa el monto y la fecha', 'error');
+      const validCats = obState.categories.filter(c => c.name.trim());
+      if (validCats.length === 0) {
+        showToast('Crea al menos una categoría', 'error');
         return;
       }
+      // Populate salary account selector
+      const sel = document.getElementById('ob-salary-account');
+      sel.innerHTML = obState.accounts.filter(a => a.name.trim()).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+
       showOnboardingStep(4);
     });
 
     document.getElementById('btn-onboarding-step4-next')?.addEventListener('click', () => {
-      // Calculate past expenses
-      const spent = obState.salary.amount - obState.account.balance;
-      document.getElementById('ob-summary-income').textContent = formatAmount(obState.salary.amount) + ' Bs';
-      document.getElementById('ob-summary-balance').textContent = formatAmount(obState.account.balance) + ' Bs';
-      document.getElementById('ob-summary-spent').textContent = formatAmount(spent > 0 ? spent : 0) + ' Bs';
+      obState.salary.amount = parseFloat(document.getElementById('ob-salary-amount').value) || 0;
+      obState.salary.date = document.getElementById('ob-salary-date').value;
+      obState.salary.accountId = document.getElementById('ob-salary-account').value;
+
+      if (!obState.salary.amount || !obState.salary.date || !obState.salary.accountId) {
+        showToast('Por favor, ingresa el monto, fecha y cuenta', 'error');
+        return;
+      }
+
+      document.getElementById('ob-summary-date').textContent = formatDateLabel(new Date(obState.salary.date + 'T12:00:00'));
+      document.getElementById('ob-summary-balance').textContent = formatAmount(obState.salary.amount) + ' Bs';
+
       showOnboardingStep(5);
     });
 
-    document.getElementById('btn-onboarding-done')?.addEventListener('click', completeOnboarding);
-
-    // Bind account type selector in Step 2
-    document.querySelectorAll('.acc-type-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.acc-type-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-      });
+    // Step 5 Logic
+    document.getElementById('btn-ob-spent-no')?.addEventListener('click', () => {
+      document.getElementById('btn-ob-spent-no').classList.add('active');
+      document.getElementById('btn-ob-spent-yes').classList.remove('active');
+      document.getElementById('ob-expenses-container').style.display = 'none';
+      obState.hasSpent = false;
     });
+
+    document.getElementById('btn-ob-spent-yes')?.addEventListener('click', () => {
+      document.getElementById('btn-ob-spent-yes').classList.add('active');
+      document.getElementById('btn-ob-spent-no').classList.remove('active');
+      document.getElementById('ob-expenses-container').style.display = 'block';
+      obState.hasSpent = true;
+      if (obState.pastExpenses.length === 0) addObExpense();
+      renderObExpenses();
+    });
+
+    document.getElementById('btn-onboarding-done')?.addEventListener('click', completeOnboarding);
   }
 
   function showOnboardingStep(step) {
     document.querySelectorAll('.onboarding-step').forEach(el => el.classList.remove('active'));
     const stepEl = document.getElementById(`onboarding-step-${step}`);
     if (stepEl) stepEl.classList.add('active');
+
+    if (step === 2) renderObAccounts();
+    if (step === 3) renderObCategories();
+    if (step === 5 && obState.hasSpent) renderObExpenses();
   }
 
-  async function completeOnboarding() {
-    obState.pastExpenseCategory = document.getElementById('ob-past-expense-category').value;
+  // --- ACCOUNTS (Step 2) ---
+  function renderObAccounts() {
+    const list = document.getElementById('ob-accounts-list');
+    if (!list) return;
 
-    // Save profile (no specific savings goal for now, default to 0%)
+    list.innerHTML = obState.accounts.map((acc, i) => `
+      <div style="background:var(--glass-bg); border-radius:12px; padding:12px; margin-bottom:12px; border-left:4px solid ${acc.color};">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <input type="text" value="${escapeHtml(acc.name)}" placeholder="Nombre de la cuenta" onchange="App.updateObAccount(${i}, 'name', this.value)" style="flex:1; border:none; background:transparent; font-size:16px; font-weight:600; color:var(--text-primary); outline:none;">
+          <button onclick="App.removeObAccount(${i})" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:18px;">✕</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <select onchange="App.updateObAccount(${i}, 'type', this.value)" style="padding:6px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);">
+            <option value="cash" ${acc.type === 'cash' ? 'selected' : ''}>💵 Efectivo</option>
+            <option value="bank" ${acc.type === 'bank' ? 'selected' : ''}>🏦 Banco</option>
+            <option value="wallet" ${acc.type === 'wallet' ? 'selected' : ''}>💳 Monedero</option>
+            <option value="savings" ${acc.type === 'savings' ? 'selected' : ''}>💰 Ahorro</option>
+          </select>
+          <input type="color" value="${acc.color}" onchange="App.updateObAccount(${i}, 'color', this.value)" style="width:36px; height:36px; padding:0; border:none; border-radius:8px; background:transparent; cursor:pointer;">
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function addObAccount() {
+    obState.accounts.push({
+      id: MiPlataDB.generateId('acc-'),
+      name: '',
+      type: 'cash',
+      color: OB_COLORS[obState.accounts.length % OB_COLORS.length],
+      balance: 0
+    });
+    renderObAccounts();
+  }
+
+  function removeObAccount(index) {
+    obState.accounts.splice(index, 1);
+    renderObAccounts();
+  }
+
+  function updateObAccount(index, field, value) {
+    if (obState.accounts[index]) {
+      obState.accounts[index][field] = value;
+      if (field === 'color') renderObAccounts(); // Re-render to update the border color
+    }
+  }
+
+  // --- CATEGORIES (Step 3) ---
+  function renderObCategories() {
+    const list = document.getElementById('ob-categories-list');
+    if (!list) return;
+
+    list.innerHTML = obState.categories.map((cat, i) => `
+      <div style="background:var(--glass-bg); border-radius:12px; padding:12px; margin-bottom:12px; border-left:4px solid ${cat.color};">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <input type="text" value="${escapeHtml(cat.name)}" placeholder="Nombre de categoría" onchange="App.updateObCategory(${i}, 'name', this.value)" style="flex:1; border:none; background:transparent; font-size:16px; font-weight:600; color:var(--text-primary); outline:none;">
+          <button onclick="App.removeObCategory(${i})" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:18px;">✕</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <select onchange="App.updateObCategory(${i}, 'type', this.value)" style="padding:6px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);">
+            <option value="expense" ${cat.type === 'expense' ? 'selected' : ''}>Gasto</option>
+            <option value="income" ${cat.type === 'income' ? 'selected' : ''}>Ingreso</option>
+          </select>
+          <input type="text" value="${cat.icon}" onchange="App.updateObCategory(${i}, 'icon', this.value)" maxlength="4" style="width: 40px; padding:6px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); text-align:center;" placeholder="😀">
+          <input type="color" value="${cat.color}" onchange="App.updateObCategory(${i}, 'color', this.value)" style="width:36px; height:36px; padding:0; border:none; border-radius:8px; background:transparent; cursor:pointer;">
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function addObCategory() {
+    obState.categories.push({
+      id: MiPlataDB.generateId('cat-'),
+      name: '',
+      icon: OB_CATEGORY_ICONS[0],
+      type: 'expense',
+      color: OB_COLORS[obState.categories.length % OB_COLORS.length]
+    });
+    renderObCategories();
+  }
+
+  function removeObCategory(index) {
+    obState.categories.splice(index, 1);
+    renderObCategories();
+  }
+
+  function updateObCategory(index, field, value) {
+    if (obState.categories[index]) {
+      obState.categories[index][field] = value;
+      if (field === 'color') renderObCategories();
+    }
+  }
+
+  // --- PAST EXPENSES (Step 5) ---
+  function renderObExpenses() {
+    const list = document.getElementById('ob-expenses-list');
+    if (!list) return;
+
+    // Only expense categories
+    const expCats = obState.categories.filter(c => c.type === 'expense' && c.name.trim());
+    const catOptions = expCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+    list.innerHTML = obState.pastExpenses.map((exp, i) => `
+      <div style="background:var(--glass-bg); border-radius:12px; padding:12px; margin-bottom:12px; display:flex; gap:8px; align-items:center;">
+        <div style="flex:1;">
+          <input type="number" value="${exp.amount || ''}" placeholder="0.00" inputmode="decimal" step="0.01" min="0" oninput="App.updateObExpense(${i}, 'amount', this.value)" style="width:100%; border:none; border-bottom:1px solid var(--border-color); background:transparent; font-size:16px; font-weight:600; color:var(--text-primary); outline:none; margin-bottom:8px;">
+          <select onchange="App.updateObExpense(${i}, 'categoryId', this.value)" style="width:100%; padding:6px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);">
+            <option value="">Selecciona...</option>
+            ${expCats.map(c => `<option value="${c.id}" ${exp.categoryId === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+          </select>
+        </div>
+        <button onclick="App.removeObExpense(${i})" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:18px; padding:8px;">✕</button>
+      </div>
+    `).join('');
+
+    updateObExpensesSummary();
+  }
+
+  function addObExpense() {
+    obState.pastExpenses.push({ amount: 0, categoryId: '' });
+    renderObExpenses();
+  }
+
+  function removeObExpense(index) {
+    obState.pastExpenses.splice(index, 1);
+    renderObExpenses();
+  }
+
+  function updateObExpense(index, field, value) {
+    if (obState.pastExpenses[index]) {
+      if (field === 'amount') value = parseFloat(value) || 0;
+      obState.pastExpenses[index][field] = value;
+      updateObExpensesSummary();
+    }
+  }
+
+  function updateObExpensesSummary() {
+    const totalSpent = obState.pastExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const balance = obState.salary.amount - totalSpent;
+    document.getElementById('ob-summary-spent').textContent = formatAmount(totalSpent) + ' Bs';
+    document.getElementById('ob-summary-balance').textContent = formatAmount(balance) + ' Bs';
+  }
+
+  // --- FINISH ---
+  async function completeOnboarding() {
+    // Save profile
     state.profile = {
       id: 'main',
       currency: 'Bs',
@@ -132,70 +316,72 @@ const App = (() => {
     };
     await MiPlataDB.save('profile', state.profile);
 
-    // Create the primary account
+    // Save Accounts (balance is 0 for all except the one that gets the salary, which will be updated by transactions)
     await MiPlataDB.clear('accounts');
-    const account = {
-      id: MiPlataDB.generateId('acc-'),
-      name: obState.account.name,
-      icon: ACCOUNT_TYPES[obState.account.type]?.icon || '💰',
-      color: '#10b981', // Default emerald
-      type: obState.account.type,
-      balance: obState.account.balance,
-      createdAt: new Date().toISOString()
-    };
-    await MiPlataDB.save('accounts', account);
-
-    // Create initial categories if not exist
-    let categories = await MiPlataDB.getAll('categories');
-    if (categories.length === 0) {
-      const defaultCats = [
-        { name: 'Sueldo', icon: '💼', color: '#10b981', type: 'income' },
-        { name: 'Freelance', icon: '💻', color: '#3b82f6', type: 'income' },
-        { name: 'Regalo', icon: '🎁', color: '#f59e0b', type: 'income' },
-        { id: 'cat-comida', name: 'Comida', icon: '🍔', color: '#ef4444', type: 'expense' },
-        { id: 'cat-transporte', name: 'Transporte', icon: '🚌', color: '#f97316', type: 'expense' },
-        { id: 'cat-hogar', name: 'Hogar', icon: '🏠', color: '#8b5cf6', type: 'expense' },
-        { id: 'cat-general', name: 'General', icon: '📝', color: '#64748b', type: 'expense' }
-      ];
-      for (const cat of defaultCats) {
-        cat.id = cat.id || MiPlataDB.generateId('cat-');
-        await MiPlataDB.save('categories', cat);
-      }
+    const validAccounts = obState.accounts.filter(a => a.name.trim());
+    for (const acc of validAccounts) {
+      acc.name = acc.name.trim();
+      acc.icon = OB_ACCOUNT_ICONS[acc.type] || '💰';
+      acc.createdAt = new Date().toISOString();
+      await MiPlataDB.save('accounts', acc);
     }
 
-    // Determine the month of the salary
+    // Save Categories
+    await MiPlataDB.clear('categories');
+    const validCats = obState.categories.filter(c => c.name.trim());
+    for (const cat of validCats) {
+      cat.name = cat.name.trim();
+      await MiPlataDB.save('categories', cat);
+    }
+
+    // Salary Date parsing
     const [y, m] = obState.salary.date.split('-');
     const salaryMonth = `${y}-${m}`;
 
-    // Create income transaction
+    // Create Income Transaction (Salary)
     const salaryTx = {
       id: MiPlataDB.generateId('exp-'),
       type: 'income',
       amount: obState.salary.amount,
-      categoryId: 'cat-sueldo', // Fallback, will display name if not found
-      categoryName: 'Sueldo',
-      accountId: account.id,
+      categoryId: validCats.find(c => c.type === 'income')?.id || '',
+      categoryName: validCats.find(c => c.type === 'income')?.name || 'Ingreso Inicial',
+      accountId: obState.salary.accountId,
       note: 'Ingreso inicial',
       date: obState.salary.date,
       month: salaryMonth
     };
     await MiPlataDB.save('expenses', salaryTx);
 
-    // Create past expenses adjustment if necessary
-    const spent = obState.salary.amount - obState.account.balance;
-    if (spent > 0) {
-      const expenseTx = {
-        id: MiPlataDB.generateId('exp-'),
-        type: 'expense',
-        amount: spent,
-        categoryId: obState.pastExpenseCategory,
-        categoryName: 'Gastos Pasados',
-        accountId: account.id,
-        note: 'Gastos previos al registro',
-        date: obState.salary.date, // Same day as salary to keep it in that month
-        month: salaryMonth
-      };
-      await MiPlataDB.save('expenses', expenseTx);
+    // Add amount to the account directly for calculation
+    const accountIndex = validAccounts.findIndex(a => a.id === obState.salary.accountId);
+    if (accountIndex !== -1) validAccounts[accountIndex].balance += obState.salary.amount;
+
+    // Create Past Expenses Transactions
+    if (obState.hasSpent) {
+      for (const exp of obState.pastExpenses) {
+        if (exp.amount > 0 && exp.categoryId) {
+          const cat = validCats.find(c => c.id === exp.categoryId);
+          const expenseTx = {
+            id: MiPlataDB.generateId('exp-'),
+            type: 'expense',
+            amount: exp.amount,
+            categoryId: exp.categoryId,
+            categoryName: cat ? cat.name : 'Gasto Pasado',
+            accountId: obState.salary.accountId,
+            note: 'Gastos previos al registro',
+            date: obState.salary.date, // Same day as salary to keep it in the same month logic
+            month: salaryMonth
+          };
+          await MiPlataDB.save('expenses', expenseTx);
+
+          if (accountIndex !== -1) validAccounts[accountIndex].balance -= exp.amount;
+        }
+      }
+    }
+
+    // Update account balances in DB
+    for (const acc of validAccounts) {
+      await MiPlataDB.save('accounts', acc);
     }
 
     state.accounts = await MiPlataDB.getAll('accounts');
@@ -451,11 +637,11 @@ const App = (() => {
     for (const [date, expenses] of Object.entries(grouped)) {
       const d = new Date(date + 'T12:00:00');
       const dayLabel = formatDateLabel(d);
-      
+
       // Calculate day totals by type
       const dayIncome = expenses.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
       const dayExpense = expenses.filter(e => (e.type || 'expense') === 'expense').reduce((s, e) => s + e.amount, 0);
-      
+
       let dayTotalHTML = '';
       if (dayIncome > 0 && dayExpense > 0) {
         dayTotalHTML = `<span style="color:var(--accent-primary);font-size:12px;font-weight:700;">+${formatAmount(dayIncome)}</span> <span style="color:var(--expense-red);font-size:12px;font-weight:700;">-${formatAmount(dayExpense)}</span>`;
@@ -509,7 +695,7 @@ const App = (() => {
     const accIcon = acc?.icon || '';
     const d = new Date(expense.date);
     const dateStr = `${d.getDate()}/${d.getMonth() + 1}`;
-    
+
     const type = expense.type || 'expense';
     const amountSign = type === 'income' ? '+' : '-';
     const amountColor = type === 'income' ? 'var(--accent-primary)' : 'var(--expense-red)';
@@ -637,7 +823,7 @@ const App = (() => {
       document.getElementById('input-amount').value = expense.amount;
       document.getElementById('input-note').value = expense.note || '';
       document.getElementById('input-date').value = expense.date.split('T')[0];
-      
+
       typeBtns.forEach(btn => {
         if (btn.dataset.type === type) btn.classList.add('active');
         else btn.classList.remove('active');
@@ -658,7 +844,7 @@ const App = (() => {
       document.getElementById('input-amount').value = '';
       document.getElementById('input-note').value = '';
       document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
-      
+
       typeBtns.forEach(btn => {
         if (btn.dataset.type === 'expense') btn.classList.add('active');
         else btn.classList.remove('active');
@@ -1170,7 +1356,7 @@ const App = (() => {
     if (editId) {
       const cat = state.categories.find(c => c.id === editId);
       if (!cat) return;
-      
+
       const type = cat.type || 'expense';
       title.textContent = 'Editar Categoría';
       nameInput.value = cat.name;
@@ -1560,7 +1746,7 @@ const App = (() => {
     document.querySelectorAll('.savings-type-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const label = document.getElementById('edit-savings-label') ||
-                  document.getElementById('savings-label');
+      document.getElementById('savings-label');
     if (label) {
       label.textContent = btn.dataset.type === 'percentage' ? 'Porcentaje (%)' : 'Monto (Bs)';
     }
@@ -1581,31 +1767,6 @@ const App = (() => {
 
     // FAB
     document.getElementById('fab-add')?.addEventListener('click', () => showExpenseModal());
-
-    // Onboarding steps
-    document.getElementById('btn-onboarding-start')?.addEventListener('click', () => showOnboardingStep(2));
-    document.getElementById('btn-onboarding-next')?.addEventListener('click', () => {
-      // Validate at least one account with name
-      const validAccounts = onboardingAccounts.filter(a => a.name.trim());
-      if (validAccounts.length === 0) {
-        showToast('Agrega al menos una cuenta con nombre', 'error');
-        return;
-      }
-      showOnboardingStep(3);
-    });
-    document.getElementById('btn-onboarding-back')?.addEventListener('click', () => showOnboardingStep(2));
-    document.getElementById('btn-onboarding-done')?.addEventListener('click', () => completeOnboarding());
-    document.getElementById('btn-onboarding-add-account')?.addEventListener('click', () => addOnboardingAccount());
-
-    // Savings type toggle in onboarding
-    document.querySelectorAll('#onboarding .savings-type-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('#onboarding .savings-type-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const label = document.getElementById('savings-label');
-        if (label) label.textContent = btn.dataset.type === 'percentage' ? 'Porcentaje (%)' : 'Monto (Bs)';
-      });
-    });
 
     // Transaction Type Toggles
     document.querySelectorAll('#transaction-type-selector .type-btn').forEach(btn => {
@@ -1753,9 +1914,15 @@ const App = (() => {
     openModal,
     closeModal,
     changeMonth,
-    updateOnboardingAccount,
-    removeOnboardingAccount,
-    addOnboardingAccount
+    updateObAccount,
+    removeObAccount,
+    addObAccount,
+    updateObCategory,
+    removeObCategory,
+    addObCategory,
+    updateObExpense,
+    removeObExpense,
+    addObExpense
   };
 })();
 
@@ -1774,12 +1941,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res) {
               const blob = await res.blob();
               const file = new File([blob], 'comprobante_compartido.jpg', { type: blob.type || 'image/jpeg' });
-              
+
               // Open OCR Modal with the file
               if (typeof App !== 'undefined' && App.processSharedFile) {
                 App.processSharedFile(file);
               }
-              
+
               // Clean up the cache and URL
               await cache.delete(keys[0]);
               window.history.replaceState({}, document.title, window.location.pathname);

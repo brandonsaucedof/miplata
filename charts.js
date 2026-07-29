@@ -50,9 +50,9 @@ const MiPlataCharts = (() => {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: 'rgba(26, 26, 46, 0.95)',
-            titleColor: '#f1f5f9',
-            bodyColor: '#94a3b8',
+            backgroundColor: 'rgba(23, 27, 36, 0.97)',
+            titleColor: '#f4f6f8',
+            bodyColor: '#99a3b0',
             borderColor: 'rgba(255, 255, 255, 0.08)',
             borderWidth: 1,
             cornerRadius: 12,
@@ -136,10 +136,10 @@ const MiPlataCharts = (() => {
         <span class="savings-value">${formatAmount(current)} / ${formatAmount(goal)} Bs</span>
       </div>
       <div class="progress-bar">
-        <div class="progress-fill" style="width: ${pct}%;${isComplete ? ' background: linear-gradient(135deg, #22c55e 0%, #10b981 100%);' : ''}"></div>
+        <div class="progress-fill" style="width: ${pct}%;${isComplete ? ' background: var(--gradient-primary);' : ''}"></div>
       </div>
       <div style="text-align: right; margin-top: 4px;">
-        <span style="font-size: 12px; font-weight: 600; color: ${isComplete ? '#22c55e' : 'var(--text-muted)'};">
+        <span style="font-size: 12px; font-weight: 600; color: ${isComplete ? 'var(--accent-primary)' : 'var(--text-muted)'};">
           ${pct.toFixed(0)}%${isComplete ? ' ✅ ¡Meta alcanzada!' : ''}
         </span>
       </div>

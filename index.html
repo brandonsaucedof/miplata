@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0a0a0f">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0c10">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MiPlata">
-  <meta name="description" content="Gestiona tus finanzas personales de forma simple y 100% offline. Registra gastos, define metas de ahorro y visualiza tu dinero.">
+  <meta name="description"
+    content="Gestiona tus finanzas personales de forma simple y 100% offline. Registra gastos, define metas de ahorro y visualiza tu dinero.">
   <meta name="mobile-web-app-capable" content="yes">
 
   <title>MiPlata — Finanzas Personales</title>
@@ -20,6 +23,7 @@
   <!-- Styles -->
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
 
   <!-- ═══════════════════════════════════════
@@ -42,42 +46,49 @@
       <button id="btn-onboarding-start" class="btn-primary">Comenzar</button>
     </div>
 
-    <!-- Step 2: Create First Account -->
+    <!-- Step 2: Crea tus cuentas -->
     <div id="onboarding-step-2" class="onboarding-step">
       <div class="onboarding-logo">🏦</div>
-      <h2 class="onboarding-title">Tu Dinero Actual</h2>
-      <p class="onboarding-subtitle">Crea tu cuenta principal y dinos cuánto dinero tienes en ella ahora mismo.</p>
-      
-      <div class="onboarding-input-group">
-        <label>Nombre de la Cuenta</label>
-        <input type="text" id="ob-account-name" placeholder="Ej: Banco, Monedero, Efectivo" value="Efectivo">
-      </div>
-      
-      <div class="onboarding-input-group">
-        <label>Tipo de Cuenta</label>
-        <div class="account-type-selector">
-          <button class="acc-type-btn active" data-type="cash">💵 Efectivo</button>
-          <button class="acc-type-btn" data-type="bank">🏦 Banco</button>
-          <button class="acc-type-btn" data-type="wallet">💳 Monedero</button>
-          <button class="acc-type-btn" data-type="savings">💰 Ahorro</button>
-        </div>
-      </div>
+      <h2 class="onboarding-title">Crea tus cuentas</h2>
+      <p class="onboarding-subtitle">Agrega las cuentas que tienes (ej: Efectivo, Banco, Monedero). Puedes darles el
+        color que prefieras.</p>
 
-      <div class="onboarding-input-group">
-        <label>Balance Actual (Bs)</label>
-        <input type="number" id="ob-account-balance" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+      <div id="ob-accounts-list" style="margin-bottom: 16px; width: 100%;">
+        <!-- Rendered dynamically -->
       </div>
+      <button class="btn-secondary" onclick="App.addObAccount()" style="margin-bottom: 24px; width: 100%;">+ Añadir
+        Cuenta</button>
 
       <button id="btn-onboarding-step2-next" class="btn-primary" style="margin-bottom: 12px;">Siguiente</button>
-      <button class="btn-text" onclick="document.getElementById('onboarding-step-2').classList.remove('active'); document.getElementById('onboarding-step-1').classList.add('active');">← Atrás</button>
+      <button class="btn-text"
+        onclick="document.getElementById('onboarding-step-2').classList.remove('active'); document.getElementById('onboarding-step-1').classList.add('active');">←
+        Atrás</button>
     </div>
 
-    <!-- Step 3: Salary Info -->
+    <!-- Step 3: Crea tus categorías -->
     <div id="onboarding-step-3" class="onboarding-step">
+      <div class="onboarding-logo">🏷️</div>
+      <h2 class="onboarding-title">Crea tus categorías</h2>
+      <p class="onboarding-subtitle">Agrega en qué sueles gastar y de dónde recibes dinero. ¡Crea las que quieras!</p>
+
+      <div id="ob-categories-list" style="margin-bottom: 16px; width: 100%; max-height: 40vh; overflow-y: auto;">
+        <!-- Rendered dynamically -->
+      </div>
+      <button class="btn-secondary" onclick="App.addObCategory()" style="margin-bottom: 24px; width: 100%;">+ Añadir
+        Categoría</button>
+
+      <button id="btn-onboarding-step3-next" class="btn-primary" style="margin-bottom: 12px;">Siguiente</button>
+      <button class="btn-text"
+        onclick="document.getElementById('onboarding-step-3').classList.remove('active'); document.getElementById('onboarding-step-2').classList.add('active');">←
+        Atrás</button>
+    </div>
+
+    <!-- Step 4: Tu Sueldo -->
+    <div id="onboarding-step-4" class="onboarding-step">
       <div class="onboarding-logo">💸</div>
-      <h2 class="onboarding-title">Tu Último Ingreso</h2>
-      <p class="onboarding-subtitle">¿Cuándo recibiste tu último sueldo o ingreso importante y de cuánto fue?</p>
-      
+      <h2 class="onboarding-title">Tu Último Sueldo</h2>
+      <p class="onboarding-subtitle">¿De cuánto fue tu último ingreso y a qué cuenta llegó?</p>
+
       <div class="onboarding-input-group">
         <label>Monto Recibido (Bs)</label>
         <input type="number" id="ob-salary-amount" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
@@ -88,60 +99,52 @@
         <input type="date" id="ob-salary-date">
       </div>
 
-      <button id="btn-onboarding-step3-next" class="btn-primary" style="margin-bottom: 12px;">Siguiente</button>
-      <button class="btn-text" onclick="document.getElementById('onboarding-step-3').classList.remove('active'); document.getElementById('onboarding-step-2').classList.add('active');">← Atrás</button>
-    </div>
-
-    <!-- Step 4: Categories -->
-    <div id="onboarding-step-4" class="onboarding-step">
-      <div class="onboarding-logo">🏷️</div>
-      <h2 class="onboarding-title">Tus Categorías</h2>
-      <p class="onboarding-subtitle">Estas son las categorías base. Puedes crear más después en Ajustes.</p>
-      
-      <div style="width:100%; text-align:left; margin-bottom: 16px;">
-        <label style="font-size:13px; font-weight:600; color:var(--text-secondary); text-transform:uppercase;">Gastos Principales</label>
-        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
-          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🍔 Comida</span>
-          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🚌 Transporte</span>
-          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🛒 Súper</span>
-          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🏠 Hogar</span>
-          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🎮 Ocio</span>
-        </div>
-      </div>
-
-      <div style="width:100%; text-align:left; margin-bottom: 24px;">
-        <label style="font-size:13px; font-weight:600; color:var(--text-secondary); text-transform:uppercase;">Ingresos Principales</label>
-        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
-          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">💼 Sueldo</span>
-          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">💻 Freelance</span>
-          <span style="background:var(--glass-bg); padding:6px 12px; border-radius:16px; font-size:14px;">🎁 Regalo</span>
-        </div>
-      </div>
-
-      <button id="btn-onboarding-step4-next" class="btn-primary" style="margin-bottom: 12px;">Siguiente</button>
-      <button class="btn-text" onclick="document.getElementById('onboarding-step-4').classList.remove('active'); document.getElementById('onboarding-step-3').classList.add('active');">← Atrás</button>
-    </div>
-
-    <!-- Step 5: Past Expenses -->
-    <div id="onboarding-step-5" class="onboarding-step">
-      <div class="onboarding-logo">📝</div>
-      <h2 class="onboarding-title">Gastos hasta hoy</h2>
-      <p class="onboarding-subtitle">Recibiste <span id="ob-summary-income" style="font-weight:bold;color:var(--accent-primary);">0</span> y ahora tienes <span id="ob-summary-balance" style="font-weight:bold;">0</span>.<br>Has gastado <span id="ob-summary-spent" style="font-weight:bold;color:var(--expense-red);">0</span>.</p>
-      
-      <p style="font-size:14px; color:var(--text-secondary); margin-bottom:16px;">Vamos a registrar ese gasto para que las analíticas sean exactas.</p>
-
       <div class="onboarding-input-group">
-        <label>Categoría del gasto pasado</label>
-        <select id="ob-past-expense-category">
-          <option value="cat-general">Varios / General</option>
-          <option value="cat-comida">Comida</option>
-          <option value="cat-transporte">Transporte</option>
-          <option value="cat-hogar">Hogar</option>
+        <label>¿A qué cuenta entró?</label>
+        <select id="ob-salary-account">
+          <!-- Rendered dynamically -->
         </select>
       </div>
 
+      <button id="btn-onboarding-step4-next" class="btn-primary" style="margin-bottom: 12px;">Siguiente</button>
+      <button class="btn-text"
+        onclick="document.getElementById('onboarding-step-4').classList.remove('active'); document.getElementById('onboarding-step-3').classList.add('active');">←
+        Atrás</button>
+    </div>
+
+    <!-- Step 5: Gastos Previos -->
+    <div id="onboarding-step-5" class="onboarding-step">
+      <div class="onboarding-logo">📝</div>
+      <h2 class="onboarding-title">Gastos hasta hoy</h2>
+      <p class="onboarding-subtitle">¿Has gastado algo desde que recibiste tu sueldo el <span id="ob-summary-date"
+          style="font-weight:bold;">-</span>?</p>
+
+      <div style="display: flex; gap: 12px; margin-bottom: 24px; width: 100%;">
+        <button id="btn-ob-spent-no" class="btn-secondary" style="flex:1;">No, nada</button>
+        <button id="btn-ob-spent-yes" class="btn-secondary" style="flex:1;">Sí, gasté</button>
+      </div>
+
+      <div id="ob-expenses-container" style="display: none; width: 100%;">
+        <p style="font-size:14px; color:var(--text-secondary); margin-bottom:12px;">Desglosa tus gastos para mantener
+          tus analíticas exactas.</p>
+        <div id="ob-expenses-list" style="margin-bottom: 16px; width: 100%; max-height: 30vh; overflow-y: auto;">
+          <!-- Rendered dynamically -->
+        </div>
+        <button class="btn-secondary" onclick="App.addObExpense()"
+          style="margin-bottom: 24px; width: 100%; font-size:13px;">+ Añadir otro gasto</button>
+
+        <div
+          style="background:var(--glass-bg); padding:12px; border-radius:12px; margin-bottom:24px; text-align:center;">
+          <span style="font-size:13px; color:var(--text-secondary);">Balance Resultante</span>
+          <div id="ob-summary-balance" style="font-size:24px; font-weight:700; color:var(--accent-primary);">0.00 Bs
+          </div>
+        </div>
+      </div>
+
       <button id="btn-onboarding-done" class="btn-primary" style="margin-bottom: 12px;">¡Finalizar y empezar!</button>
-      <button class="btn-text" onclick="document.getElementById('onboarding-step-5').classList.remove('active'); document.getElementById('onboarding-step-4').classList.add('active');">← Atrás</button>
+      <button class="btn-text"
+        onclick="document.getElementById('onboarding-step-5').classList.remove('active'); document.getElementById('onboarding-step-4').classList.add('active');">←
+        Atrás</button>
     </div>
   </div>
 
@@ -229,7 +232,8 @@
         </button>
 
         <h3 class="section-title" style="margin-top: 24px;">Transferencias Rápidas</h3>
-        <button class="glass-card transfer-btn" onclick="App.showTransferModal()" style="width:100%;text-align:center;cursor:pointer;border:none;">
+        <button class="glass-card transfer-btn" onclick="App.showTransferModal()"
+          style="width:100%;text-align:center;cursor:pointer;border:none;">
           <div style="font-size:24px;margin-bottom:4px;">🔄</div>
           <div style="font-size:14px;font-weight:600;color:var(--text-primary);">Transferir entre cuentas</div>
           <div style="font-size:12px;color:var(--text-muted);">Mover dinero de una cuenta a otra</div>
@@ -239,7 +243,7 @@
       <!-- ─── ANALYTICS ─── -->
       <section id="tab-analytics" class="tab-panel">
         <h3 class="section-title">Analíticas del Mes</h3>
-        
+
         <!-- Donut Chart -->
         <div class="glass-card" style="margin-bottom: var(--space-md);">
           <h4 style="font-size:14px; color:var(--text-secondary); margin-bottom:12px;">Distribución de Gastos</h4>
@@ -375,7 +379,8 @@
 
       <div class="form-group">
         <label class="form-label" for="input-amount">Monto (Bs)</label>
-        <input type="number" class="form-input" id="input-amount" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+        <input type="number" class="form-input" id="input-amount" placeholder="0.00" inputmode="decimal" step="0.01"
+          min="0">
       </div>
 
       <div class="form-group">
@@ -407,7 +412,8 @@
         <button id="btn-save-expense" class="btn-primary">Guardar</button>
       </div>
 
-      <button id="btn-scan-receipt" class="btn-text" style="width:100%;margin-top:8px;text-align:center;color:var(--accent-secondary);">
+      <button id="btn-scan-receipt" class="btn-text"
+        style="width:100%;margin-top:8px;text-align:center;color:var(--accent-secondary);">
         📸 Escanear comprobante
       </button>
     </div>
@@ -444,7 +450,8 @@
       <div id="ocr-result" class="ocr-result">
         <div class="ocr-result-label">Monto detectado</div>
         <div id="ocr-result-amount" class="ocr-result-amount">0,00 Bs</div>
-        <input type="number" id="ocr-result-edit" class="ocr-result-edit" placeholder="Corregir monto" inputmode="decimal" step="0.01" min="0">
+        <input type="number" id="ocr-result-edit" class="ocr-result-edit" placeholder="Corregir monto"
+          inputmode="decimal" step="0.01" min="0">
       </div>
 
       <!-- Debug: alternate amounts + raw text -->
@@ -475,7 +482,8 @@
 
       <div class="form-group">
         <label class="form-label" for="input-cat-icon">Ícono (emoji)</label>
-        <input type="text" class="form-input" id="input-cat-icon" placeholder="🐶" maxlength="4" style="font-size: 28px; text-align: center;">
+        <input type="text" class="form-input" id="input-cat-icon" placeholder="🐶" maxlength="4"
+          style="font-size: 28px; text-align: center;">
       </div>
 
       <div class="form-group">
@@ -485,7 +493,8 @@
 
       <div class="form-group">
         <label class="form-label" for="input-cat-desc">Descripción (opcional)</label>
-        <input type="text" class="form-input" id="input-cat-desc" placeholder="Ej: Comida y accesorios para mascotas" maxlength="60">
+        <input type="text" class="form-input" id="input-cat-desc" placeholder="Ej: Comida y accesorios para mascotas"
+          maxlength="60">
       </div>
 
       <div class="modal-actions">
@@ -512,7 +521,8 @@
 
       <div class="form-group">
         <label class="form-label" for="input-acc-icon">Ícono (emoji)</label>
-        <input type="text" class="form-input" id="input-acc-icon" placeholder="🏦" maxlength="4" style="font-size: 28px; text-align: center;">
+        <input type="text" class="form-input" id="input-acc-icon" placeholder="🏦" maxlength="4"
+          style="font-size: 28px; text-align: center;">
       </div>
 
       <div class="form-group">
@@ -532,7 +542,8 @@
 
       <div class="form-group" id="account-balance-group">
         <label class="form-label" for="input-acc-balance">Balance Inicial (Bs)</label>
-        <input type="number" class="form-input" id="input-acc-balance" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+        <input type="number" class="form-input" id="input-acc-balance" placeholder="0.00" inputmode="decimal"
+          step="0.01" min="0">
       </div>
 
       <div class="modal-actions">
@@ -570,7 +581,8 @@
 
       <div class="form-group">
         <label class="form-label" for="input-transfer-amount">Monto (Bs)</label>
-        <input type="number" class="form-input" id="input-transfer-amount" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+        <input type="number" class="form-input" id="input-transfer-amount" placeholder="0.00" inputmode="decimal"
+          step="0.01" min="0">
       </div>
 
       <div class="form-group">
@@ -590,7 +602,7 @@
     <div class="modal-content" style="max-height: 85vh; overflow-y: auto;">
       <div class="modal-handle"></div>
       <h2 class="modal-title">🏷️ Categorías</h2>
-      
+
       <div class="transaction-type-selector" id="categories-manager-type-selector">
         <button class="type-btn active" data-type="expense">Gastos</button>
         <button class="type-btn" data-type="income">Ingresos</button>
@@ -641,4 +653,5 @@
   <script src="app.js"></script>
 
 </body>
+
 </html>
