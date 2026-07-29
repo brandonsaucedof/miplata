@@ -43,6 +43,12 @@
         Tu app de finanzas personales.<br>
         100% offline, privada y sin límites.
       </p>
+
+      <div class="onboarding-input-group" style="margin-bottom: 24px;">
+        <label style="text-align:center; display:block;">¿Cómo te llamas?</label>
+        <input type="text" id="ob-user-name" placeholder="Tu nombre" style="width:100%; padding:12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); text-align:center; font-size:16px; margin-top:8px;" maxlength="20">
+      </div>
+
       <button id="btn-onboarding-start" class="btn-primary">Comenzar</button>
     </div>
 
@@ -155,7 +161,7 @@
 
     <!-- Header -->
     <header id="app-header">
-      <span class="header-title">MiPlata</span>
+      <span class="header-title" id="header-title">MiPlata</span>
       <div class="header-month">
         <button id="btn-prev-month" class="header-month-btn" aria-label="Mes anterior">‹</button>
         <span id="header-month-label" class="header-month-label">Julio 2026</span>
@@ -267,6 +273,19 @@
 
       <!-- ─── SETTINGS ─── -->
       <section id="tab-settings" class="tab-panel">
+
+        <h3 class="section-title">Perfil</h3>
+        <div class="glass-card settings-group">
+          <div class="settings-item">
+            <div class="settings-icon">👤</div>
+            <div class="settings-info">
+              <div class="settings-label">Tu Nombre</div>
+              <div class="settings-description">Para saludarte en el inicio</div>
+            </div>
+            <span id="settings-user-name" class="settings-value">-</span>
+            <button id="btn-edit-name" class="settings-action">Editar</button>
+          </div>
+        </div>
 
         <h3 class="section-title">Ahorro</h3>
         <div class="glass-card settings-group">

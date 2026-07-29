@@ -63,6 +63,7 @@ const App = (() => {
      ONBOARDING WIZARD (V3)
      ════════════════════════════════════════ */
   let obState = {
+    userName: '',
     accounts: [],
     categories: [],
     salary: { amount: 0, date: '', accountId: '' },
@@ -90,7 +91,11 @@ const App = (() => {
     showOnboardingStep(1);
 
     // Bind step navigation
-    document.getElementById('btn-onboarding-start')?.addEventListener('click', () => showOnboardingStep(2));
+    document.getElementById('btn-onboarding-start')?.addEventListener('click', () => {
+      const nameInput = document.getElementById('ob-user-name');
+      if (nameInput) obState.userName = nameInput.value.trim();
+      showOnboardingStep(2);
+    });
 
     document.getElementById('btn-onboarding-step2-next')?.addEventListener('click', () => {
       // Validate at least one account
@@ -309,6 +314,7 @@ const App = (() => {
     // Save profile
     state.profile = {
       id: 'main',
+      name: obState.userName || '',
       currency: 'Bs',
       savingsType: 'percentage',
       savingsValue: 0,
@@ -404,6 +410,15 @@ const App = (() => {
     const [year, month] = state.currentMonth.split('-').map(Number);
     const label = `${MONTHS_ES[month - 1]} ${year}`;
     document.getElementById('header-month-label').textContent = label;
+
+    const titleEl = document.getElementById('header-title');
+    if (titleEl) {
+      if (state.profile?.name) {
+        titleEl.textContent = `¡Hola, ${state.profile.name}!`;
+      } else {
+        titleEl.textContent = 'MiPlata';
+      }
+    }
   }
 
   /* ════════════════════════════════════════
@@ -793,6 +808,11 @@ const App = (() => {
      RENDER: SETTINGS
      ════════════════════════════════════════ */
   function renderSettings() {
+    const nameEl = document.getElementById('settings-user-name');
+    if (nameEl) {
+      nameEl.textContent = state.profile?.name || '-';
+    }
+
     const savingsEl = document.getElementById('settings-savings-value');
 
     if (savingsEl && state.profile) {
@@ -1526,6 +1546,38 @@ const App = (() => {
   /* ════════════════════════════════════════
      SETTINGS
      ════════════════════════════════════════ */
+  function showEditName() {
+    const content = document.getElementById('confirm-content');
+    content.innerHTML = `
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:32px;margin-bottom:8px;">👤</div>
+        <div style="font-size:16px;font-weight:600;">Tu Nombre</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nombre</label>
+        <input type="text" class="form-input" id="edit-name-input" value="${state.profile?.name || ''}" placeholder="Ej: Brandon" maxlength="20">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="App.closeModal('modal-confirm')">Cancelar</button>
+        <button class="btn-primary" onclick="App.updateName()">Guardar</button>
+      </div>`;
+    openModal('modal-confirm');
+  }
+
+  async function updateName() {
+    const name = document.getElementById('edit-name-input').value.trim();
+    if (!name) {
+      showToast('Por favor ingresa un nombre', 'error');
+      return;
+    }
+    state.profile.name = name;
+    await MiPlataDB.save('profile', state.profile);
+    closeModal('modal-confirm');
+    updateHeader();
+    renderCurrentTab();
+    showToast('Nombre actualizado', 'success');
+  }
+
   function showEditSavings() {
     const content = document.getElementById('confirm-content');
     content.innerHTML = `
@@ -1847,6 +1899,7 @@ const App = (() => {
     document.getElementById('btn-ocr-confirm')?.addEventListener('click', () => confirmOCRAmount());
 
     // Settings
+    document.getElementById('btn-edit-name')?.addEventListener('click', () => showEditName());
     document.getElementById('btn-edit-savings')?.addEventListener('click', () => showEditSavings());
     document.getElementById('btn-export')?.addEventListener('click', () => exportData());
     document.getElementById('btn-import')?.addEventListener('click', () => importData());
@@ -1906,6 +1959,8 @@ const App = (() => {
     showEditSavings,
     updateSavings,
     toggleSavingsType,
+    showEditName,
+    updateName,
     exportData,
     importData,
     confirmImport,
