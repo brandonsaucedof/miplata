@@ -1585,3 +1585,36 @@ textarea.form-input {
   color: var(--text-secondary);
   line-height: 1.6;
 }
+
+/* ── Transaction Type Selector ── */
+.transaction-type-selector {
+  display: flex;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  margin-bottom: var(--space-md);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.transaction-type-selector .type-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.transaction-type-selector .type-btn.active[data-type="expense"] {
+  background: var(--bg-primary);
+  color: var(--expense-red);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.transaction-type-selector .type-btn.active[data-type="income"] {
+  background: var(--bg-primary);
+  color: var(--accent-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}

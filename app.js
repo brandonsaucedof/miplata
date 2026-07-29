@@ -168,20 +168,37 @@ const App = (() => {
      CALCULATIONS
      ════════════════════════════════════════ */
   function getMonthSummary() {
-    const salary = state.profile?.salary || 0;
-    const totalSpent = state.expenses.reduce((sum, e) => sum + e.amount, 0);
+    const baseSalary = state.profile?.salary || 0;
+    
+    let extraIncomes = 0;
+    let totalSpent = 0;
+
+    state.expenses.forEach(e => {
+      const type = e.type || 'expense';
+      if (type === 'income') {
+        extraIncomes += e.amount;
+      } else {
+        totalSpent += e.amount;
+      }
+    });
+
+    const totalIncome = baseSalary + extraIncomes;
+
     const savingsGoal = state.profile?.savingsType === 'percentage'
-      ? salary * (state.profile.savingsValue / 100)
+      ? totalIncome * (state.profile.savingsValue / 100)
       : (state.profile?.savingsValue || 0);
-    const available = salary - totalSpent;
+      
+    const available = totalIncome - totalSpent;
     const currentSavings = Math.max(available, 0);
 
-    return { salary, totalSpent, savingsGoal, available, currentSavings };
+    return { salary: totalIncome, totalSpent, savingsGoal, available, currentSavings };
   }
 
   function getCategoryBreakdown() {
     const map = {};
     for (const expense of state.expenses) {
+      if ((expense.type || 'expense') === 'income') continue;
+
       if (!map[expense.category]) {
         const cat = state.categories.find(c => c.id === expense.category);
         map[expense.category] = {
@@ -329,6 +346,10 @@ const App = (() => {
     const color = cat?.color || '#6b7280';
     const d = new Date(expense.date);
     const dateStr = `${d.getDate()}/${d.getMonth() + 1}`;
+    
+    const type = expense.type || 'expense';
+    const amountSign = type === 'income' ? '+' : '-';
+    const amountColor = type === 'income' ? 'var(--accent-primary)' : 'var(--expense-red)';
 
     return `
       <div class="expense-item" data-id="${expense.id}" onclick="App.showExpenseActions('${expense.id}')">
@@ -340,7 +361,7 @@ const App = (() => {
           ${expense.note ? `<div class="expense-note">${escapeHtml(expense.note)}</div>` : ''}
         </div>
         <div class="expense-meta">
-          <div class="expense-amount">-${formatAmount(expense.amount)} Bs</div>
+          <div class="expense-amount" style="color: ${amountColor}">${amountSign}${formatAmount(expense.amount)} Bs</div>
           <div class="expense-date">${dateStr}</div>
         </div>
       </div>`;
@@ -408,16 +429,24 @@ const App = (() => {
     const modal = document.getElementById('modal-expense');
     const title = document.getElementById('modal-expense-title');
     const submitBtn = document.getElementById('btn-save-expense');
+    const typeBtns = document.querySelectorAll('#transaction-type-selector .type-btn');
 
     if (editId) {
       const expense = state.expenses.find(e => e.id === editId);
       if (!expense) return;
 
-      title.textContent = 'Editar Gasto';
+      const type = expense.type || 'expense';
+      title.textContent = 'Editar Registro';
       submitBtn.textContent = 'Guardar Cambios';
       document.getElementById('input-amount').value = expense.amount;
       document.getElementById('input-note').value = expense.note || '';
       document.getElementById('input-date').value = expense.date.split('T')[0];
+      
+      typeBtns.forEach(btn => {
+        if (btn.dataset.type === type) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+      renderCategorySelector(type);
 
       // Select category
       setTimeout(() => {
@@ -426,27 +455,29 @@ const App = (() => {
         });
       }, 50);
     } else {
-      title.textContent = 'Nuevo Gasto';
-      submitBtn.textContent = 'Guardar Gasto';
+      title.textContent = 'Nuevo Registro';
+      submitBtn.textContent = 'Guardar';
       document.getElementById('input-amount').value = '';
       document.getElementById('input-note').value = '';
       document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
-
-      setTimeout(() => {
-        document.querySelectorAll('.category-option').forEach(opt => opt.classList.remove('selected'));
-      }, 50);
+      
+      typeBtns.forEach(btn => {
+        if (btn.dataset.type === 'expense') btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+      renderCategorySelector('expense');
     }
 
-    // Render category selector
-    renderCategorySelector();
     openModal('modal-expense');
   }
 
-  function renderCategorySelector() {
+  function renderCategorySelector(type = 'expense') {
     const container = document.getElementById('category-selector');
     if (!container) return;
 
-    container.innerHTML = state.categories.map(cat => `
+    const filteredCats = state.categories.filter(cat => (cat.type || 'expense') === type);
+
+    container.innerHTML = filteredCats.map(cat => `
       <div class="category-option" data-id="${cat.id}" onclick="App.selectCategory(this)">
         <span class="category-option-icon">${cat.icon}</span>
         <span class="category-option-name">${cat.name}</span>
@@ -484,8 +515,12 @@ const App = (() => {
     const [y, m] = date.split('-');
     const month = `${y}-${m}`;
 
+    const typeBtn = document.querySelector('#transaction-type-selector .type-btn.active');
+    const type = typeBtn ? typeBtn.dataset.type : 'expense';
+
     const expense = {
       id: state.editingExpense || MiPlataDB.generateId('exp-'),
+      type,
       amount,
       category: categoryId,
       note,
@@ -503,10 +538,12 @@ const App = (() => {
     renderCurrentTab();
 
     const cat = state.categories.find(c => c.id === categoryId);
+    const actionWord = type === 'income' ? 'Ingreso registrado' : 'Gasto registrado';
+    const actionEdit = type === 'income' ? 'Ingreso actualizado' : 'Gasto actualizado';
     showToast(
       state.editingExpense
-        ? 'Gasto actualizado ✏️'
-        : `${cat?.icon || '💸'} Gasto registrado: ${formatAmount(amount)} Bs`,
+        ? `${actionEdit} ✏️`
+        : `${cat?.icon || '💸'} ${actionWord}: ${formatAmount(amount)} Bs`,
       'success'
     );
     state.editingExpense = null;
@@ -573,16 +610,24 @@ const App = (() => {
     const colorInput = document.getElementById('input-cat-color');
     const descInput = document.getElementById('input-cat-desc');
     const deleteBtn = document.getElementById('btn-delete-category');
+    const typeBtns = document.querySelectorAll('#category-type-selector .type-btn');
 
     if (editId) {
       const cat = state.categories.find(c => c.id === editId);
       if (!cat) return;
+      
+      const type = cat.type || 'expense';
       title.textContent = 'Editar Categoría';
       nameInput.value = cat.name;
       iconInput.value = cat.icon;
       colorInput.value = cat.color;
       descInput.value = cat.description || '';
       deleteBtn.classList.remove('hidden');
+
+      typeBtns.forEach(btn => {
+        if (btn.dataset.type === type) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
     } else {
       title.textContent = 'Nueva Categoría';
       nameInput.value = '';
@@ -590,6 +635,11 @@ const App = (() => {
       colorInput.value = '#10b981';
       descInput.value = '';
       deleteBtn.classList.add('hidden');
+
+      typeBtns.forEach(btn => {
+        if (btn.dataset.type === 'expense') btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
     }
 
     openModal('modal-category');
@@ -604,6 +654,8 @@ const App = (() => {
     const icon = document.getElementById('input-cat-icon').value.trim();
     const color = document.getElementById('input-cat-color').value;
     const description = document.getElementById('input-cat-desc').value.trim();
+    const typeBtn = document.querySelector('#category-type-selector .type-btn.active');
+    const type = typeBtn ? typeBtn.dataset.type : 'expense';
 
     if (!name) {
       showToast('Ingresa un nombre', 'error');
@@ -612,6 +664,7 @@ const App = (() => {
 
     const category = {
       id: state.editingCategory || MiPlataDB.generateId('cat-'),
+      type,
       name,
       icon: icon || '📌',
       color,
@@ -1017,6 +1070,21 @@ const App = (() => {
       });
     });
 
+    // Transaction Type Toggles
+    document.querySelectorAll('.transaction-type-selector .type-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const selector = e.target.closest('.transaction-type-selector');
+        selector.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+
+        // Only re-render if it's the expense modal selector
+        if (selector.id === 'transaction-type-selector') {
+          // Re-render categories for the selected type
+          App.renderCategorySelector(e.target.dataset.type);
+        }
+      });
+    });
+
     // Expense modal
     document.getElementById('btn-save-expense')?.addEventListener('click', () => saveExpense());
     document.getElementById('btn-scan-receipt')?.addEventListener('click', () => {
@@ -1073,6 +1141,7 @@ const App = (() => {
   return {
     init,
     processSharedFile,
+    renderCategorySelector,
     switchTab,
     showExpenseModal,
     saveExpense,

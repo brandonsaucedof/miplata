@@ -256,7 +256,12 @@
   <div id="modal-expense" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-handle"></div>
-      <h2 id="modal-expense-title" class="modal-title">Nuevo Gasto</h2>
+      <h2 id="modal-expense-title" class="modal-title">Nuevo Registro</h2>
+
+      <div class="transaction-type-selector" id="transaction-type-selector">
+        <button class="type-btn active" data-type="expense">Gasto</button>
+        <button class="type-btn" data-type="income">Ingreso</button>
+      </div>
 
       <div class="form-group">
         <label class="form-label" for="input-amount">Monto (Bs)</label>
@@ -282,7 +287,7 @@
 
       <div class="modal-actions">
         <button class="btn-secondary" data-close-modal="modal-expense">Cancelar</button>
-        <button id="btn-save-expense" class="btn-primary">Guardar Gasto</button>
+        <button id="btn-save-expense" class="btn-primary">Guardar</button>
       </div>
 
       <button id="btn-scan-receipt" class="btn-text" style="width:100%;margin-top:8px;text-align:center;color:var(--accent-secondary);">
@@ -340,6 +345,11 @@
     <div class="modal-content">
       <div class="modal-handle"></div>
       <h2 id="modal-category-title" class="modal-title">Nueva Categoría</h2>
+
+      <div class="transaction-type-selector" id="category-type-selector">
+        <button class="type-btn active" data-type="expense">Gasto</button>
+        <button class="type-btn" data-type="income">Ingreso</button>
+      </div>
 
       <div class="form-group">
         <label class="form-label" for="input-cat-name">Nombre</label>

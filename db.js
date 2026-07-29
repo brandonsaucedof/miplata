@@ -9,15 +9,22 @@ const MiPlataDB = (() => {
 
   /* ── Default categories ── */
   const DEFAULT_CATEGORIES = [
-    { id: 'cat-comida',          name: 'Comida',          icon: '🍔', color: '#f97316', description: 'Alimentación y mercado' },
-    { id: 'cat-transporte',      name: 'Transporte',      icon: '🚌', color: '#3b82f6', description: 'Pasajes, gasolina' },
-    { id: 'cat-vivienda',        name: 'Vivienda',        icon: '🏠', color: '#8b5cf6', description: 'Alquiler, servicios' },
-    { id: 'cat-salud',           name: 'Salud',           icon: '💊', color: '#ef4444', description: 'Medicinas, consultas' },
-    { id: 'cat-entretenimiento', name: 'Entretenimiento', icon: '🎮', color: '#ec4899', description: 'Ocio, suscripciones' },
-    { id: 'cat-servicios',       name: 'Servicios',       icon: '📱', color: '#06b6d4', description: 'Internet, teléfono' },
-    { id: 'cat-ropa',            name: 'Ropa',            icon: '👕', color: '#f59e0b', description: 'Vestimenta' },
-    { id: 'cat-educacion',       name: 'Educación',       icon: '📚', color: '#10b981', description: 'Cursos, materiales' },
-    { id: 'cat-otros',           name: 'Otros',           icon: '💰', color: '#6b7280', description: 'Sin categoría' }
+    // Gastos
+    { id: 'cat-comida',          name: 'Comida',          icon: '🍔', color: '#f97316', description: 'Alimentación y mercado', type: 'expense' },
+    { id: 'cat-transporte',      name: 'Transporte',      icon: '🚌', color: '#3b82f6', description: 'Pasajes, gasolina', type: 'expense' },
+    { id: 'cat-vivienda',        name: 'Vivienda',        icon: '🏠', color: '#8b5cf6', description: 'Alquiler, servicios', type: 'expense' },
+    { id: 'cat-salud',           name: 'Salud',           icon: '💊', color: '#ef4444', description: 'Medicinas, consultas', type: 'expense' },
+    { id: 'cat-entretenimiento', name: 'Entretenimiento', icon: '🎮', color: '#ec4899', description: 'Ocio, suscripciones', type: 'expense' },
+    { id: 'cat-servicios',       name: 'Servicios',       icon: '📱', color: '#06b6d4', description: 'Internet, teléfono', type: 'expense' },
+    { id: 'cat-ropa',            name: 'Ropa',            icon: '👕', color: '#f59e0b', description: 'Vestimenta', type: 'expense' },
+    { id: 'cat-educacion',       name: 'Educación',       icon: '📚', color: '#10b981', description: 'Cursos, materiales', type: 'expense' },
+    { id: 'cat-otros',           name: 'Otros',           icon: '🛍️', color: '#6b7280', description: 'Gasto sin categoría', type: 'expense' },
+    
+    // Ingresos
+    { id: 'cat-sueldo',          name: 'Sueldo',          icon: '💰', color: '#10b981', description: 'Ingreso principal', type: 'income' },
+    { id: 'cat-ventas',          name: 'Ventas',          icon: '🏷️', color: '#8b5cf6', description: 'Venta de artículos', type: 'income' },
+    { id: 'cat-regalo',          name: 'Regalo',          icon: '🎁', color: '#ec4899', description: 'Dinero regalado', type: 'income' },
+    { id: 'cat-otros-ingresos',  name: 'Otros Ingresos',  icon: '💵', color: '#3b82f6', description: 'Ingreso extra', type: 'income' }
   ];
 
   /* ── Open / upgrade DB ── */
