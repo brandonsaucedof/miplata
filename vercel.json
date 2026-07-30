@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/|sw\\.js|manifest\\.json|styles\\.css|app\\.js|charts\\.js|db\\.js|ocr\\.js|icons/).*)",
       "destination": "/index.html"
     }
   ],
