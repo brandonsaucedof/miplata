@@ -20,7 +20,9 @@ const MiPlataOCR = (() => {
       });
 
       if (!response.ok) {
-        throw new Error('Error en la API: ' + response.status);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API responded with error:', response.status, errorData);
+        throw new Error(`Error en la API: ${response.status} - ${errorData.details || errorData.error || ''}`);
       }
 
       const data = await response.json();
