@@ -2202,15 +2202,14 @@ const App = (() => {
   function showPinScreen() {
     document.getElementById('pin-screen').classList.remove('hidden');
     document.getElementById('app').classList.add('hidden');
+    document.getElementById('onboarding').classList.add('hidden');
     state.enteredPin = '';
     updatePinDots('pin-dots', state.enteredPin);
   }
 
   function hidePinScreen() {
     document.getElementById('pin-screen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    updateHeader();
-    renderCurrentTab();
+    showApp();
   }
 
   function updatePinDots(containerId, pinValue) {
