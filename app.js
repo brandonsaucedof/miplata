@@ -8,7 +8,7 @@ const App = (() => {
      STATE
      ════════════════════════════════════════ */
   let state = {
-    profile: null,        // { id, currency, savingsType, savingsValue }
+    profile: null,        // { id, currency, savingsType, savingsValue, pinEnabled, pinCode }
     accounts: [],         // All accounts
     expenses: [],         // Current month transactions
     plannedExpenses: [],  // All planned expenses
@@ -18,7 +18,11 @@ const App = (() => {
     editingExpense: null,
     editingCategory: null,
     editingAccount: null,
-    movementFilter: 'all' // 'all' | 'expense' | 'income'
+    movementFilter: 'all', // 'all' | 'expense' | 'income'
+    enteredPin: '',
+    setupPin: '',
+    setupPinStep: 1,
+    setupPinTemp: ''
   };
 
   const MONTHS_ES = [
@@ -54,10 +58,15 @@ const App = (() => {
       showOnboarding();
     } else {
       await loadMonthData();
-      showApp();
+      if (state.profile.pinEnabled && state.profile.pinCode) {
+        showPinScreen();
+      } else {
+        showApp();
+      }
     }
 
     bindEvents();
+    initPinEvents();
   }
 
   /* ════════════════════════════════════════
@@ -844,6 +853,11 @@ const App = (() => {
     const nameEl = document.getElementById('settings-user-name');
     if (nameEl) {
       nameEl.textContent = state.profile?.name || '-';
+    }
+    
+    const togglePin = document.getElementById('toggle-pin');
+    if (togglePin && state.profile) {
+      togglePin.checked = !!state.profile.pinEnabled;
     }
 
     const savingsEl = document.getElementById('settings-savings-value');
@@ -2179,6 +2193,144 @@ const App = (() => {
         const modalId = btn.dataset.closeModal;
         closeModal(modalId);
       });
+    });
+  }
+
+  /* ════════════════════════════════════════
+     PIN LOCK LOGIC
+     ════════════════════════════════════════ */
+  function showPinScreen() {
+    document.getElementById('pin-screen').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+    state.enteredPin = '';
+    updatePinDots('pin-dots', state.enteredPin);
+  }
+
+  function hidePinScreen() {
+    document.getElementById('pin-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    updateHeader();
+    renderCurrentTab();
+  }
+
+  function updatePinDots(containerId, pinValue) {
+    const dots = document.getElementById(containerId).querySelectorAll('.pin-dot');
+    dots.forEach((dot, index) => {
+      dot.classList.remove('error');
+      if (index < pinValue.length) {
+        dot.classList.add('filled');
+      } else {
+        dot.classList.remove('filled');
+      }
+    });
+  }
+
+  function showPinError(containerId) {
+    const dots = document.getElementById(containerId).querySelectorAll('.pin-dot');
+    dots.forEach(dot => dot.classList.add('error'));
+    document.getElementById(containerId).parentElement.classList.add('shake');
+    setTimeout(() => {
+      document.getElementById(containerId).parentElement.classList.remove('shake');
+      if (containerId === 'pin-dots') {
+        state.enteredPin = '';
+      } else {
+        state.setupPin = '';
+        document.getElementById('pin-setup-msg').textContent = 'Ingresa un nuevo PIN de 5 dígitos';
+      }
+      updatePinDots(containerId, '');
+    }, 400);
+  }
+
+  function handlePinInput(key) {
+    if (key === 'back') {
+      state.enteredPin = state.enteredPin.slice(0, -1);
+    } else {
+      if (state.enteredPin.length < 5) {
+        state.enteredPin += key;
+      }
+    }
+    updatePinDots('pin-dots', state.enteredPin);
+
+    if (state.enteredPin.length === 5) {
+      if (state.enteredPin === state.profile.pinCode) {
+        hidePinScreen();
+      } else {
+        showPinError('pin-dots');
+      }
+    }
+  }
+
+  function handlePinSetupInput(key) {
+    if (key === 'back') {
+      state.setupPin = state.setupPin.slice(0, -1);
+    } else {
+      if (state.setupPin.length < 5) {
+        state.setupPin += key;
+      }
+    }
+    updatePinDots('pin-setup-dots', state.setupPin);
+
+    if (state.setupPin.length === 5) {
+      if (state.setupPinStep === 1) {
+        state.setupPinTemp = state.setupPin;
+        state.setupPin = '';
+        state.setupPinStep = 2;
+        setTimeout(() => {
+          updatePinDots('pin-setup-dots', '');
+          document.getElementById('pin-setup-msg').textContent = 'Confirma tu PIN de 5 dígitos';
+        }, 200);
+      } else {
+        if (state.setupPin === state.setupPinTemp) {
+          state.profile.pinEnabled = true;
+          state.profile.pinCode = state.setupPin;
+          MiPlataDB.save('profile', state.profile).then(() => {
+            showToast('PIN configurado con éxito', 'success');
+            closeModal('modal-pin-setup');
+            const togglePin = document.getElementById('toggle-pin');
+            if (togglePin) togglePin.checked = true;
+          });
+        } else {
+          showPinError('pin-setup-dots');
+          state.setupPinStep = 1;
+        }
+      }
+    }
+  }
+
+  function initPinEvents() {
+    const togglePin = document.getElementById('toggle-pin');
+    if (togglePin) {
+      togglePin.addEventListener('change', async (e) => {
+        if (e.target.checked) {
+          e.target.checked = false; // keep unchecked until setup succeeds
+          state.setupPin = '';
+          state.setupPinStep = 1;
+          document.getElementById('pin-setup-msg').textContent = 'Ingresa un nuevo PIN de 5 dígitos';
+          updatePinDots('pin-setup-dots', '');
+          openModal('modal-pin-setup');
+        } else {
+          state.profile.pinEnabled = false;
+          state.profile.pinCode = '';
+          await MiPlataDB.save('profile', state.profile);
+          showToast('Bloqueo por PIN desactivado', 'success');
+        }
+      });
+    }
+
+    document.querySelectorAll('#pin-screen .pin-key:not(.pin-key-empty)').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        handlePinInput(e.currentTarget.dataset.key);
+      });
+    });
+
+    document.querySelectorAll('#modal-pin-setup .setup-key:not(.pin-key-empty)').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        handlePinSetupInput(e.currentTarget.dataset.key);
+      });
+    });
+
+    document.getElementById('btn-cancel-pin-setup')?.addEventListener('click', () => {
+      closeModal('modal-pin-setup');
     });
   }
 

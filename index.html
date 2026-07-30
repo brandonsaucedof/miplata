@@ -32,6 +32,40 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- ═══════════════════════════════════════
+       PIN LOCK SCREEN
+       ═══════════════════════════════════════ -->
+  <div id="pin-screen" class="screen hidden" style="z-index: 9999; background: var(--bg-primary);">
+    <div class="pin-container">
+      <div class="pin-icon">🔒</div>
+      <h2 class="pin-title">Introduce tu PIN</h2>
+      <p class="pin-subtitle">Desbloquea MiPlata</p>
+      
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+      </div>
+
+      <div class="pin-keypad">
+        <button class="pin-key" data-key="1">1</button>
+        <button class="pin-key" data-key="2">2</button>
+        <button class="pin-key" data-key="3">3</button>
+        <button class="pin-key" data-key="4">4</button>
+        <button class="pin-key" data-key="5">5</button>
+        <button class="pin-key" data-key="6">6</button>
+        <button class="pin-key" data-key="7">7</button>
+        <button class="pin-key" data-key="8">8</button>
+        <button class="pin-key" data-key="9">9</button>
+        <button class="pin-key pin-key-empty"></button>
+        <button class="pin-key" data-key="0">0</button>
+        <button class="pin-key pin-key-backspace" data-key="back">⌫</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
        ONBOARDING
        ═══════════════════════════════════════ -->
   <div id="onboarding" class="screen">
@@ -383,6 +417,21 @@
               <div class="settings-description">Restaurar desde archivo JSON</div>
             </div>
             <button id="btn-import" class="settings-action">Importar</button>
+          </div>
+        </div>
+
+        <h3 class="section-title">Seguridad</h3>
+        <div class="glass-card settings-group">
+          <div class="settings-item">
+            <div class="settings-icon">🔒</div>
+            <div class="settings-info">
+              <div class="settings-label">Bloqueo por PIN</div>
+              <div class="settings-description">Protege la app con un código de 5 dígitos</div>
+            </div>
+            <div class="toggle-container">
+              <input type="checkbox" id="toggle-pin" class="toggle-input">
+              <label for="toggle-pin" class="toggle-label"></label>
+            </div>
           </div>
         </div>
 
@@ -758,6 +807,47 @@
       <div class="modal-handle"></div>
       <div id="confirm-content">
         <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: PIN Setup -->
+  <div id="modal-pin-setup" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Configurar PIN</h2>
+      
+      <p style="text-align: center; color: var(--text-secondary); margin-bottom: 24px;" id="pin-setup-msg">
+        Ingresa un nuevo PIN de 5 dígitos
+      </p>
+
+      <div class="pin-setup-display">
+        <div class="pin-setup-dots" id="pin-setup-dots">
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+        </div>
+      </div>
+
+      <div class="pin-keypad">
+        <button class="pin-key setup-key" data-key="1">1</button>
+        <button class="pin-key setup-key" data-key="2">2</button>
+        <button class="pin-key setup-key" data-key="3">3</button>
+        <button class="pin-key setup-key" data-key="4">4</button>
+        <button class="pin-key setup-key" data-key="5">5</button>
+        <button class="pin-key setup-key" data-key="6">6</button>
+        <button class="pin-key setup-key" data-key="7">7</button>
+        <button class="pin-key setup-key" data-key="8">8</button>
+        <button class="pin-key setup-key" data-key="9">9</button>
+        <button class="pin-key pin-key-empty"></button>
+        <button class="pin-key setup-key" data-key="0">0</button>
+        <button class="pin-key setup-key pin-key-backspace" data-key="back">⌫</button>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 24px;">
+        <button class="btn-secondary" id="btn-cancel-pin-setup">Cancelar</button>
       </div>
     </div>
   </div>
