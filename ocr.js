@@ -155,8 +155,12 @@ const MiPlataOCR = (() => {
     // ── Normalize common OCR errors ──
     let t = text
       .replace(/\r\n/g, '\n')
-      .replace(/\bBs\s*\.\s*/g, 'Bs ')   // "Bs . 10" → "Bs 10"
-      .replace(/\bbs\s*\.\s*/g, 'Bs ')
+      // Normalize common misreadings of "Bs." or "Bs"
+      .replace(/\b(?:Bs|bs|8s|B5|85)\s*\.\s*/ig, 'Bs ')
+      // "8s" and "B5" are almost always "Bs"
+      .replace(/\b(?:8s|B5)\b/ig, 'Bs')
+      // "85 " followed by a number is often a misread of "Bs "
+      .replace(/\b85[ \t]+(?=\d+(?:[., ]\d+)?\b)/g, 'Bs ')
       .replace(/[|¡]/g, '')
       .replace(/\s{2,}/g, ' ');
 
@@ -167,19 +171,19 @@ const MiPlataOCR = (() => {
     // ─── Pattern set — decimals OPTIONAL ───────────────────────────────
     const patterns = [
       // #1 HIGH: "Bs 10", "Bs10", "Bs. 100", "Bs 1,500.50"
-      /Bs\.?\s*(\d{1,6}(?:[.,]\d{3})*(?:[.,]\d{1,2})?)/gi,
+      /(?:Bs|BOB)\.?\s*(\d{1,6}(?:[., ]\d{3})*(?:[.,]\d{1,2})?)/gi,
 
       // #2 HIGH: "10 Bs", "100.50Bs", "150BOB"
-      /(\d{1,6}(?:[.,]\d{3})*(?:[.,]\d{1,2})?)\s*(?:Bs\.?|BOB)/gi,
+      /(\d{1,6}(?:[., ]\d{3})*(?:[.,]\d{1,2})?)\s*(?:Bs\.?|BOB)/gi,
 
       // #3 MED: Yape-style keywords (crédito, enviaste, recargaste…)
-      /(?:cr[eé]dito|recargaste|enviaste|recibiste|pagaste|monto|total|importe|subtotal)[^0-9\n]{0,40}(\d{1,6}(?:[.,]\d{3})*(?:[.,]\d{1,2})?)/gi,
+      /(?:cr[eé]dito|recargaste|enviaste|recibiste|pagaste|monto|total|importe|subtotal|pago de)[^0-9\n]{0,40}(\d{1,6}(?:[., ]\d{3})*(?:[.,]\d{1,2})?)/gi,
 
       // #4 MED: generic label + amount
-      /(?:valor|precio|costo|saldo|cobr\w+|pag\w+)[^0-9\n]{0,30}(\d{1,6}(?:[.,]\d{3})*(?:[.,]\d{1,2})?)/gi,
+      /(?:valor|precio|costo|saldo|cobr\w+|pag\w+)[^0-9\n]{0,30}(\d{1,6}(?:[., ]\d{3})*(?:[.,]\d{1,2})?)/gi,
 
       // #5 LOW: standalone decimals only (too risky without currency marker)
-      /\b(\d{1,4}[.,]\d{2})\b/g
+      /\b(\d{1,6}(?:[., ]\d{3})*(?:[.,]\d{2}))\b/g
     ];
 
     for (const re of patterns) {
@@ -189,9 +193,8 @@ const MiPlataOCR = (() => {
         if (!raw) continue;
 
         // Skip obvious non-amounts
-        if (/^\d{7,}$/.test(raw)) continue;           // phone / tx IDs
-        if (/^\d{8,}$/.test(raw)) continue;
-        if (/^\d{4}$/.test(raw) && +raw >= 1990 && +raw <= 2100) continue; // years
+        if (/^\d{7,}$/.test(raw.replace(/\s/g, ''))) continue;           // phone / tx IDs
+        if (/^\d{4}$/.test(raw.replace(/\s/g, '')) && +raw >= 1990 && +raw <= 2100) continue; // years
 
         const value = normalize(raw);
         if (value !== null && !found.has(value)) {
@@ -205,16 +208,16 @@ const MiPlataOCR = (() => {
 
   /* ── Normalize a raw matched string to a float ── */
   function normalize(raw) {
-    let n = raw;
+    let n = raw.replace(/[ \t]/g, ''); // Remove spaces used as thousand separators
 
-    if (/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(raw)) {
-      n = raw.replace(/\./g, '').replace(',', '.');        // 1.234,56 → 1234.56
-    } else if (/^\d{1,3}(?:,\d{3})+\.\d{1,2}$/.test(raw)) {
-      n = raw.replace(/,/g, '');                           // 1,234.56 → 1234.56
-    } else if (/^\d{1,3}\.\d{3}$/.test(raw)) {
-      n = raw.replace('.', '');                            // 1.500 → 1500 (Bolivia)
-    } else if (/^\d+,\d{1,2}$/.test(raw)) {
-      n = raw.replace(',', '.');                           // 10,50 → 10.50
+    if (/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(n)) {
+      n = n.replace(/\./g, '').replace(',', '.');        // 1.234,56 → 1234.56
+    } else if (/^\d{1,3}(?:,\d{3})+\.\d{1,2}$/.test(n)) {
+      n = n.replace(/,/g, '');                           // 1,234.56 → 1234.56
+    } else if (/^\d{1,3}\.\d{3}$/.test(n)) {
+      n = n.replace('.', '');                            // 1.500 → 1500 (Bolivia)
+    } else if (/^\d+,\d{1,2}$/.test(n)) {
+      n = n.replace(',', '.');                           // 10,50 → 10.50
     }
     // "10", "100", "10.50" → already fine
 
