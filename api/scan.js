@@ -76,8 +76,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ amount: null });
     }
 
-    // Clean up just in case Gemini returns something like "Bs 10.50" despite instructions
-    amountText = amountText.replace(/[^0-9.]/g, '');
+    // Clean up just in case Gemini returns something like "Bs 10,50" despite instructions
+    amountText = amountText.replace(/,/g, '.').replace(/[^0-9.]/g, '');
     const amount = parseFloat(amountText);
 
     if (isNaN(amount)) {
