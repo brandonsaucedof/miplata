@@ -22,7 +22,10 @@ const MiPlataOCR = (() => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('API responded with error:', response.status, errorData);
-        throw new Error(`Error en la API: ${response.status} - ${errorData.details || errorData.error || ''}`);
+        if (errorData.availableModels) {
+          console.error('Available models from Gemini API:', errorData.availableModels);
+        }
+        throw new Error(`Error en la API: ${response.status} - ${errorData.details || errorData.error || ''} | Modelos: ${errorData.availableModels || 'N/A'}`);
       }
 
       const data = await response.json();

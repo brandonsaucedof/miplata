@@ -56,9 +56,21 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      console.error('Gemini API Error:', errText);
-      return res.status(500).json({ error: 'Error calling Gemini API', details: errText });
+      let errText = await response.text();
+      let availableModels = 'Could not fetch models';
+      
+      if (response.status === 404) {
+        try {
+          const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`);
+          const modelsData = await modelsRes.json();
+          availableModels = modelsData.models ? modelsData.models.map(m => m.name).join(', ') : 'No models list found';
+        } catch (e) {
+          availableModels = e.toString();
+        }
+      }
+      
+      console.error('Gemini API Error:', errText, 'Available models:', availableModels);
+      return res.status(500).json({ error: 'Error calling Gemini API', details: errText, availableModels });
     }
 
     const data = await response.json();
